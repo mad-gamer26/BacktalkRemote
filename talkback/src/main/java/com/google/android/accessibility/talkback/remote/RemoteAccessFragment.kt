@@ -196,9 +196,9 @@ class RemoteAccessFragment : TalkbackBaseFragment(), RemoteAccess.Listener {
     val controlling = remote?.isControlling == true
     controlStatus?.summary =
       when {
-        remote != null && controlling -> remote.controlText
-        unavailable != null -> unavailable
-        else -> remote?.controlUnavailableReason() ?: getString(R.string.remote_off)
+        remote == null -> getString(R.string.remote_backtalk_off)
+        controlling -> remote.controlText
+        else -> remote.controlUnavailableReason() ?: getString(R.string.remote_off)
       }
     controlToggle?.apply {
       setTitle(if (controlling) R.string.pref_remote_stop_control else R.string.pref_remote_start_control)

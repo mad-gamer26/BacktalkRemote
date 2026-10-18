@@ -276,6 +276,7 @@ import com.google.android.accessibility.utils.Statistics;
 import com.google.android.accessibility.utils.TreeDebug;
 import com.google.android.accessibility.utils.WindowUtils;
 import com.google.android.accessibility.utils.gestures.GestureAnalyticsEvent;
+import com.google.android.accessibility.utils.gestures.GestureEvent;
 import com.google.android.accessibility.utils.gestures.GestureManifold.TapToTouchExploreAnalyticsEvent;
 import com.google.android.accessibility.utils.gestures.MultiTap.MultiTapAnalyticsEvent;
 import com.google.android.accessibility.utils.input.HeadsUpNotificationEventInterpreter;
@@ -1498,6 +1499,17 @@ public class TalkBackService extends AccessibilityServiceCompat
       return true;
     }
     return false;
+  }
+
+  /**
+   * A gesture that Backtalk's own gesture detection recognized. From Android 13 it goes the way of
+   * the gestures Android recognizes; before, where only remote access detects gestures, by its ID.
+   */
+  public boolean onDetectedGesture(GestureEvent gestureEvent) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      return onGesture(gestureEvent.toAccessibilityGestureEvent());
+    }
+    return handleOnGestureById(gestureEvent.getDisplayId(), gestureEvent.getGestureId());
   }
 
   private void provisionTouchExplore(boolean enabled) {
@@ -4282,7 +4294,7 @@ public class TalkBackService extends AccessibilityServiceCompat
    * A gesture monitor for the touches of a device controlling this phone, set up as the touch
    * screen's is, with [controller] in place of Android's.
    */
-  @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+  @RequiresApi(Build.VERSION_CODES.R)
   public TouchInteractionMonitor createRemoteTouchMonitor(TouchController controller) {
     Display display =
         getSystemService(DisplayManager.class).getDisplay(Display.DEFAULT_DISPLAY);
@@ -4300,7 +4312,9 @@ public class TalkBackService extends AccessibilityServiceCompat
     monitor.setRemote(true);
     monitor.setMultiFingerGesturesEnabled(true);
     monitor.setTwoFingerPassthroughEnabled(true);
-    monitor.setServiceHandlesDoubleTap(true);
+    // As on the touch screen: Backtalk handles double tap itself when it recognizes gestures itself;
+    // otherwise, as before Android 13, the remote controller clicks like Android's.
+    monitor.setServiceHandlesDoubleTap(isServiceGestureDetectionActive());
     userInterface.registerListener(monitor);
     return monitor;
   }
@@ -4314,7 +4328,7 @@ public class TalkBackService extends AccessibilityServiceCompat
    * A touch screen event, which goes to the phone this one controls while it does. Returns whether
    * it went, in which case Backtalk here ignores it.
    */
-  @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+  @RequiresApi(Build.VERSION_CODES.R)
   boolean forwardTouchToRemote(MotionEvent event) {
     if (remoteAccess == null || !remoteAccess.isControlling()) {
       return false;
@@ -4371,7 +4385,8 @@ public class TalkBackService extends AccessibilityServiceCompat
       touchInteractionMonitor.setServiceHandlesDoubleTap(true);
       // No executor: the controller calls the monitor on the main thread as each event comes in, in
       // order with the timeouts that gesture detection counts there.
-      touchInteractionController.registerCallback(/* executor= */ null, touchInteractionMonitor);
+      touchInteractionController.registerCallback(
+          /* executor= */ null, touchInteractionMonitor.frameworkCallback());
       displayIdToTouchInteractionMonitors.put(display.getDisplayId(), touchInteractionMonitor);
       userInterface.registerListener(touchInteractionMonitor);
       LogUtils.i(TAG, "Enabling service gesture detection on display %d", display.getDisplayId());
@@ -4402,7 +4417,7 @@ public class TalkBackService extends AccessibilityServiceCompat
       }
       userInterface.unregisterListener(touchInteractionMonitor);
       touchInteractionMonitor.stop();
-      touchInteractionController.unregisterCallback(touchInteractionMonitor);
+      touchInteractionController.unregisterCallback(touchInteractionMonitor.frameworkCallback());
     }
     displayIdToTouchInteractionMonitors.clear();
   }

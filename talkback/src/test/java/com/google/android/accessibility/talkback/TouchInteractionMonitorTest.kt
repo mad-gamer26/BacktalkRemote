@@ -129,7 +129,7 @@ class TouchInteractionMonitorTest {
     monitor.setMultiFingerGesturesEnabled(true)
     monitor.setTwoFingerPassthroughEnabled(true)
     monitor.setServiceHandlesDoubleTap(true)
-    controller.registerCallback(/* executor= */ null, monitor)
+    controller.registerCallback(/* executor= */ null, monitor.frameworkCallback())
     // Without a connection to Android, the controller would refuse every state change.
     TouchInteractionController::class.java.getDeclaredField("mServiceDetectsGestures").apply {
       isAccessible = true
@@ -141,7 +141,7 @@ class TouchInteractionMonitorTest {
   @After
   fun tearDown() {
     monitor.stop()
-    controller.unregisterCallback(monitor)
+    controller.unregisterCallback(monitor.frameworkCallback())
   }
 
   private fun callController(name: String, type: Class<*>, argument: Any) {

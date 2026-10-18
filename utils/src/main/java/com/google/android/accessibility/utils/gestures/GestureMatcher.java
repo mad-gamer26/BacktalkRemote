@@ -90,7 +90,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
  *
  * @hide
  */
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@RequiresApi(Build.VERSION_CODES.R)
 public abstract class GestureMatcher {
   // Potential states for this individual gesture matcher.
   /**

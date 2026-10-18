@@ -29,7 +29,7 @@ import com.google.android.accessibility.utils.gestures.GestureManifold.GestureCo
  *
  * @hide
  */
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@RequiresApi(Build.VERSION_CODES.R)
 public class MultiTapAndHold extends MultiTap {
   private static final String TAG = "MultiTapAndHold";
 

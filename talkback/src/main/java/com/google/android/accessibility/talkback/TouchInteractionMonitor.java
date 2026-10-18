@@ -43,7 +43,6 @@ import static com.google.android.accessibility.utils.gestures.GestureManifold.GE
 import static com.google.android.accessibility.utils.gestures.GestureManifold.GESTURE_TAP_UP_TOUCH_EXPLORE;
 import static com.google.android.accessibility.utils.gestures.GestureManifold.GESTURE_TOUCH_EXPLORE;
 
-import android.accessibilityservice.AccessibilityGestureEvent;
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.TouchInteractionController;
 import android.content.ComponentCallbacks;
@@ -77,6 +76,7 @@ import com.google.android.accessibility.utils.Performance;
 import com.google.android.accessibility.utils.Performance.EventId;
 import com.google.android.accessibility.utils.SharedPreferencesUtils;
 import com.google.android.accessibility.utils.gestures.GestureConfiguration;
+import com.google.android.accessibility.utils.gestures.GestureEvent;
 import com.google.android.accessibility.utils.gestures.GestureManifold;
 import com.google.android.accessibility.utils.gestures.GestureManifold.GestureConfigProvider;
 import com.google.android.accessibility.utils.gestures.GestureMatcher.AnalyticsEventLogger;
@@ -105,10 +105,9 @@ import org.checkerframework.checker.nullness.qual.Nullable;
  * thread anyway, so another thread would not get them sooner, and a timeout counted there could run
  * out before an event that came in earlier but was still waiting for the busy main thread.
  */
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@RequiresApi(Build.VERSION_CODES.R)
 public class TouchInteractionMonitor
-    implements TouchInteractionController.Callback,
-        GestureManifold.Listener,
+    implements GestureManifold.Listener,
         ComponentCallbacks,
         UserInterface.UserInputEventListener {
   private static final String LOG_TAG = "TouchInteractionMonitor";
@@ -482,8 +481,6 @@ public class TouchInteractionMonitor
       };
 
   @MainThread
-  @SuppressWarnings("Override")
-  @Override
   public void onMotionEvent(MotionEvent event) {
     if (!remote && event != null && service.forwardTouchToRemote(event)) {
       // This phone is controlling another, whose Backtalk handles the touch.
@@ -660,21 +657,19 @@ public class TouchInteractionMonitor
   }
 
   @MainThread
-  @SuppressWarnings("Override")
-  @Override
   public void onStateChanged(int state) {
     if (BuildConfig.DEBUG) {
       Log.d(
           DEBUG_GESTURE_TAG,
-          TouchInteractionController.stateToString(this.state)
+          stateToString(this.state)
               + " -> "
-              + TouchInteractionController.stateToString(state));
+              + stateToString(state));
     }
     LogUtils.v(
         LOG_TAG,
         "%s -> %s",
-        TouchInteractionController.stateToString(this.state),
-        TouchInteractionController.stateToString(state));
+        stateToString(this.state),
+        stateToString(state));
     touchExplorationModeFailureReporter.onTouchStateChanged(state);
     if (this.state == STATE_CLEAR) {
       // Clear on transition to a new interaction
@@ -978,16 +973,16 @@ public class TouchInteractionMonitor
   }
 
   @Override
-  public void onGestureCompleted(AccessibilityGestureEvent gestureEvent) {
+  public void onGestureCompleted(GestureEvent gestureEvent) {
     if (BuildConfig.DEBUG) {
       Log.d(
           DEBUG_GESTURE_TAG,
           "Gesture "
               + AccessibilityServiceCompatUtils.gestureIdToString(gestureEvent.getGestureId())
               + " in state "
-              + TouchInteractionController.stateToString(state)
+              + stateToString(state)
               + ", previous "
-              + TouchInteractionController.stateToString(previousState));
+              + stateToString(previousState));
     }
     LogUtils.v(
         LOG_TAG,
@@ -1006,8 +1001,8 @@ public class TouchInteractionMonitor
           LOG_TAG,
           "Gesture %s dropped in state %s , previous state %s",
           gestureEvent,
-          TouchInteractionController.stateToString(state),
-          TouchInteractionController.stateToString(previousState));
+          stateToString(state),
+          stateToString(previousState));
       return;
     }
     int gestureId = gestureEvent.getGestureId();
@@ -1039,14 +1034,12 @@ public class TouchInteractionMonitor
       controller.performLongClickAndStartDrag();
     } else if (gestureId == GESTURE_FAKED_SPLIT_TYPING) {
       dispatchGestureToMainThread(
-          new AccessibilityGestureEvent(
-              GESTURE_FAKED_SPLIT_TYPING, displayId, new ArrayList<MotionEvent>()));
+          new GestureEvent(GESTURE_FAKED_SPLIT_TYPING, displayId));
       // log firstDownTime with display id
       eventId = Performance.getInstance().onGestureEventReceived(displayId, null);
     } else if (gestureId == GESTURE_FAKED_SPLIT_TYPING_AND_HOLD) {
       dispatchGestureToMainThread(
-          new AccessibilityGestureEvent(
-              GESTURE_FAKED_SPLIT_TYPING_AND_HOLD, displayId, new ArrayList<MotionEvent>()));
+          new GestureEvent(GESTURE_FAKED_SPLIT_TYPING_AND_HOLD, displayId));
       // log firstDownTime with display id
       eventId = Performance.getInstance().onGestureEventReceived(displayId, null);
     } else {
@@ -1055,10 +1048,10 @@ public class TouchInteractionMonitor
   }
 
   /** Dispatch a gesture event to the main thread of the service. */
-  private void dispatchGestureToMainThreadAndClear(AccessibilityGestureEvent gestureEvent) {
+  private void dispatchGestureToMainThreadAndClear(GestureEvent gestureEvent) {
     mainHandler.post(
         () -> {
-          boolean unused = service.onGesture(gestureEvent);
+          boolean unused = service.onDetectedGesture(gestureEvent);
         });
     clear();
     clearGestureDetectorOnNextDown = true;
@@ -1129,7 +1122,7 @@ public class TouchInteractionMonitor
         Log.d(
             DEBUG_GESTURE_TAG,
             "Rotation not possible: state="
-                + TouchInteractionController.stateToString(state)
+                + stateToString(state)
                 + " gestureStarted="
                 + gestureStarted);
       }
@@ -1164,14 +1157,14 @@ public class TouchInteractionMonitor
           "Gesture " + AccessibilityServiceCompatUtils.gestureIdToString(gestureId));
     }
     dispatchGestureToMainThread(
-        new AccessibilityGestureEvent(gestureId, displayId, new ArrayList<MotionEvent>()));
+        new GestureEvent(gestureId, displayId));
   }
 
   /** Dispatch a gesture event to the main thread of the service, but do not clear state. */
-  private void dispatchGestureToMainThread(AccessibilityGestureEvent gestureEvent) {
+  private void dispatchGestureToMainThread(GestureEvent gestureEvent) {
     mainHandler.post(
         () -> {
-          boolean unused = service.onGesture(gestureEvent);
+          boolean unused = service.onDetectedGesture(gestureEvent);
         });
   }
 
@@ -1217,6 +1210,44 @@ public class TouchInteractionMonitor
     this.remote = remote;
   }
 
+  private TouchInteractionController.@Nullable Callback frameworkCallback;
+
+  /**
+   * The callback to register with Android's {@link TouchInteractionController}, which passes its
+   * events and state changes here. Apart from the monitor, so that the monitor also loads on
+   * Android before 13, where remote access uses it without Android's controller.
+   */
+  @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+  public TouchInteractionController.Callback frameworkCallback() {
+    if (frameworkCallback == null) {
+      frameworkCallback =
+          new TouchInteractionController.Callback() {
+            @Override
+            public void onMotionEvent(MotionEvent event) {
+              TouchInteractionMonitor.this.onMotionEvent(event);
+            }
+
+            @Override
+            public void onStateChanged(int state) {
+              TouchInteractionMonitor.this.onStateChanged(state);
+            }
+          };
+    }
+    return frameworkCallback;
+  }
+
+  /** {@link TouchInteractionController#stateToString}, which only Android 13 has. */
+  static String stateToString(int state) {
+    return switch (state) {
+      case STATE_CLEAR -> "STATE_CLEAR";
+      case STATE_TOUCH_INTERACTING -> "STATE_TOUCH_INTERACTING";
+      case STATE_TOUCH_EXPLORING -> "STATE_TOUCH_EXPLORING";
+      case STATE_DRAGGING -> "STATE_DRAGGING";
+      case STATE_DELEGATING -> "STATE_DELEGATING";
+      default -> Integer.toString(state);
+    };
+  }
+
   public void setMultiFingerGesturesEnabled(boolean mode) {
     gestureDetector.setMultiFingerGesturesEnabled(mode);
   }
@@ -1241,8 +1272,8 @@ public class TouchInteractionMonitor
         new StringBuilder(
             String.format(
                 "\nController's expected state: %s, , actual state: %s\n",
-                TouchInteractionController.stateToString(state),
-                TouchInteractionController.stateToString(controller.getState())));
+                stateToString(state),
+                stateToString(controller.getState())));
     List<CallerInfo> callerList = new ArrayList<>(callerInfos);
     for (CallerInfo info : callerList) {
       stringBuilder.append(info).append("\n");

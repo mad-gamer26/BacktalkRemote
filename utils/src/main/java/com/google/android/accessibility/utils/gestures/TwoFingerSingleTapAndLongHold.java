@@ -26,7 +26,7 @@ import com.google.android.accessibility.utils.Performance.EventId;
  * This class matches gesture of the form 2-finger 1-tap and long hold. It is only for TalkBack
  * mis-triggering recovery feature. Its hold complete timeout is longer than long press timeout.
  */
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@RequiresApi(Build.VERSION_CODES.R)
 class TwoFingerSingleTapAndLongHold extends MultiFingerMultiTap {
 
   private static final int LONG_HOLD_TIMEOUT_MS = 5000;

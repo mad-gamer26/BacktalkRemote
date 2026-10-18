@@ -32,7 +32,7 @@ import com.google.android.accessibility.utils.Performance.EventId;
  * one finger is held down and a second finger executes the taps. The number of taps for each
  * instance is specified in the constructor.
  */
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@RequiresApi(Build.VERSION_CODES.R)
 class SecondFingerTap extends GestureMatcher {
   private static final int TARGET_FINGER_COUNT = 2;
   protected final int targetTaps;

@@ -78,7 +78,7 @@ import kotlin.math.max
  *
  * Runs on the main thread, as the monitor does.
  */
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@RequiresApi(Build.VERSION_CODES.R)
 class RemoteTouchController(
   private val service: TalkBackService,
   private val interpreter: TouchExplorationInterpreter,

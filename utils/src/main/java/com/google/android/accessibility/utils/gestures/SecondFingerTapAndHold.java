@@ -27,7 +27,7 @@ import com.google.android.accessibility.utils.Performance.EventId;
  * is where one finger is held down and a second finger executes the taps then hold. The number of
  * taps for each instance is specified in the constructor.
  */
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@RequiresApi(Build.VERSION_CODES.R)
 public class SecondFingerTapAndHold extends SecondFingerTap {
   public SecondFingerTapAndHold(
       Context context,

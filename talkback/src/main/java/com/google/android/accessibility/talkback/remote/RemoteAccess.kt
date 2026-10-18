@@ -151,23 +151,32 @@ class RemoteAccess(
     listeners -= listener
   }
 
-  /** Why remote access cannot run, in words, or null if it can. */
+  /**
+   * Why this phone cannot be shared, in words, or null if it can. Sharing needs Android 11, for the
+   * touch passed through to apps and Backtalk's low-latency speech, which the controlling device
+   * hears.
+   */
   fun unavailableReason(): String? =
     when {
-      Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ->
-        service.getString(R.string.remote_needs_android_13)
+      Build.VERSION.SDK_INT < Build.VERSION_CODES.R ->
+        service.getString(R.string.remote_share_needs_android_11)
       !RemoteNative.isAvailable(service) -> service.getString(R.string.remote_not_in_build)
       else -> null
     }
 
-  /** Why this phone cannot control another, in words, or null if it can. */
+  /**
+   * Why this phone cannot control another, in words, or null if it can. Controlling needs Android
+   * 13, where Backtalk can get the raw touch to send on.
+   */
   fun controlUnavailableReason(): String? =
-    unavailableReason()
-      ?: if (!service.isServiceGestureDetectionActive) {
+    when {
+      Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ->
+        service.getString(R.string.remote_control_needs_android_13)
+      !RemoteNative.isAvailable(service) -> service.getString(R.string.remote_not_in_build)
+      !service.isServiceGestureDetectionActive ->
         service.getString(R.string.remote_needs_gesture_handling)
-      } else {
-        null
-      }
+      else -> null
+    }
 
   /** The access key of this phone, made the first time. Null if remote access can't run. */
   fun shareKey(): String? =
@@ -225,7 +234,7 @@ class RemoteAccess(
   }
 
   fun onConfigurationChanged() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
       host?.onConfigurationChanged()
     }
   }
@@ -233,7 +242,7 @@ class RemoteAccess(
   private fun applySharing() {
     val wanted =
       RemoteSettings.isSharing(prefs) &&
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
         RemoteNative.isAvailable(service)
     if (!wanted) {
       stopHost()
@@ -252,13 +261,13 @@ class RemoteAccess(
     stopHost()
     hostConfig = config
     lastHost = null
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
       host = RemoteHost(service, interpreter, feedback, server, key, playHere, this)
     }
   }
 
   private fun stopHost() {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
       host?.stop()
     }
     host = null

@@ -4407,8 +4407,10 @@ Do not use any markdown in your response."</string>
   <string name="remote_not_set">Not set</string>
   <!-- Remote access: subject of the message that sends the access key. [CHAR_LIMIT=NONE] -->
   <string name="remote_share_key_subject">Backtalk Remote access key</string>
-  <!-- Remote access: needs Android 13. [CHAR_LIMIT=NONE] -->
-  <string name="remote_needs_android_13">Remote access needs Android 13 or later</string>
+  <!-- Remote access: sharing needs Android 11. [CHAR_LIMIT=NONE] -->
+  <string name="remote_share_needs_android_11">Sharing this phone needs Android 11 or later</string>
+  <!-- Remote access: controlling needs Android 13. [CHAR_LIMIT=NONE] -->
+  <string name="remote_control_needs_android_13">Controlling another phone needs Android 13 or later</string>
   <!-- Remote access: the native part is missing from this build. [CHAR_LIMIT=NONE] -->
   <string name="remote_not_in_build">Remote access is not in this build of Backtalk</string>
   <!-- Remote access: Backtalk is off. [CHAR_LIMIT=NONE] -->

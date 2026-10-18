@@ -34,7 +34,7 @@ import com.google.android.accessibility.utils.gestures.GestureManifold.GestureCo
  * detectors are fail. To report the faked gesture complete event would cancel the all detectors and
  * inform TouchInteractionMonitor to directly transit to Touch Explore state.
  */
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@RequiresApi(Build.VERSION_CODES.R)
 public class TapToTouchExplore extends GestureMatcher {
   private static final String TAG = "TapToTouchExplore";
   // The acceptable distance the pointer can move and still count as a tap.

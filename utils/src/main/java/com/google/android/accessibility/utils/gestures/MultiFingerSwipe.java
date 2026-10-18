@@ -39,7 +39,7 @@ import java.util.List;
  * gesture. A swipe is specified as a series of one or more directions e.g. left, left and up, etc.
  * At this time swipes with more than two directions are not supported.
  */
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@RequiresApi(Build.VERSION_CODES.R)
 class MultiFingerSwipe extends GestureMatcher {
 
   // Direction constants.

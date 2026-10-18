@@ -82,7 +82,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 /**
  * This class generates the list of the {@link GestureMatcher} with the given support gesture list.
  */
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@RequiresApi(Build.VERSION_CODES.R)
 class GestureMatcherFactory {
 
   /** List of the gestures. */

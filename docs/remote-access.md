@@ -14,7 +14,7 @@ While a device controls the phone, Backtalk says so ("Matthew's iPhone is contro
 
 **Play Backtalk on this phone while controlled** is on by default, so the phone still speaks. Turn it off to hear Backtalk only on the controlling device.
 
-Remote access needs Android 13 or later on the phone.
+Sharing a phone needs Android 11 or later. On Android 13 and later, remote touches go through the same gesture handling as the phone's touch screen, as described under How it works. On Android 11 and 12, where Android rather than Backtalk recognizes the touch screen's gestures, Backtalk recognizes the remote touches itself, with the gesture detection it uses on Android 13; a double tap then clicks the item, as Android's does, rather than following the double tap setting in Backtalk's gesture settings.
 
 ## Controlling from an iPhone
 

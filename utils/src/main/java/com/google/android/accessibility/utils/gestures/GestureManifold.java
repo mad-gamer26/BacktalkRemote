@@ -41,7 +41,7 @@ import java.util.List;
  * detector. Gesture matchers are tied to a single gesture. It calls listener callback functions
  * when a gesture starts or completes.
  */
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@RequiresApi(Build.VERSION_CODES.R)
 public class GestureManifold implements GestureMatcher.StateChangeListener {
   public static final int GESTURE_FAKED_SPLIT_TYPING = -3;
   public static final int GESTURE_TAP_HOLD_AND_2ND_FINGER_FORWARD_DOUBLE_TAP = -4;
@@ -223,7 +223,7 @@ public class GestureManifold implements GestureMatcher.StateChangeListener {
      *
      * @param gestureEvent Information about the gesture.
      */
-    void onGestureCompleted(AccessibilityGestureEvent gestureEvent);
+    void onGestureCompleted(GestureEvent gestureEvent);
 
     /**
      * Called when the system has decided an event stream doesn't match any known gesture.
@@ -267,8 +267,7 @@ public class GestureManifold implements GestureMatcher.StateChangeListener {
     // Gestures that complete on a delay call clear() here.
     ArrayList<MotionEvent> eventList = new ArrayList<>();
     eventList.add(event);
-    AccessibilityGestureEvent gestureEvent =
-        new AccessibilityGestureEvent(gestureId, displayId, eventList);
+    GestureEvent gestureEvent = new GestureEvent(gestureId, displayId, eventList);
     for (GestureMatcher matcher : gestures) {
       if (gestureId == GESTURE_TAP_UP_TOUCH_EXPLORE
           && matcher.bypassCancelByTapUpToTouchExplore()) {

@@ -36,7 +36,7 @@ import com.google.errorprone.annotations.CanIgnoreReturnValue;
  *
  * @hide
  */
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@RequiresApi(Build.VERSION_CODES.R)
 public class MultiTap extends GestureMatcher {
   private static final String TAG = "MultiTap";
   final int targetTaps;

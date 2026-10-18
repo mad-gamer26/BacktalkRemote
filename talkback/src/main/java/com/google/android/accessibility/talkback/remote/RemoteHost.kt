@@ -44,7 +44,7 @@ import uniffi.backtalk_remote.TouchEvent
  * While a device controls the phone, the screen stays on, so that the phone can be used from afar.
  * The session's callbacks come on its own threads; everything here runs on the main thread.
  */
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@RequiresApi(Build.VERSION_CODES.R)
 class RemoteHost(
   private val service: TalkBackService,
   interpreter: TouchExplorationInterpreter,

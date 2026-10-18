@@ -36,7 +36,7 @@ import com.google.android.accessibility.utils.R;
  * action_down is held for more than the time the swipe gestures expect the finger should move, itʼs
  * no conflict to directly enter the touch explore state.
  */
-@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+@RequiresApi(Build.VERSION_CODES.R)
 class TapUpToTouchExplore extends GestureMatcher {
   private static final String TAG = "TapUpToTouchExplore";
   private float baseX;
