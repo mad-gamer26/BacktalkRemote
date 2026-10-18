@@ -54,7 +54,7 @@ class RemoteControl(
   }
 
   private val handler = Handler(Looper.getMainLooper())
-  private val session = ControllerSession.start(server, accessKey, RemoteHost.deviceName(context), this)
+  private val session = ControllerSession.start(server, accessKey, RemoteSettings.deviceName(context), this)
   @Volatile private var connected = false
   // Main thread: whether the touch in progress goes to the other phone.
   private var forwarding = false

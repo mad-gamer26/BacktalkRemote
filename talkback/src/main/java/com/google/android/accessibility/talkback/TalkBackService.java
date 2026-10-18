@@ -4338,6 +4338,7 @@ public class TalkBackService extends AccessibilityServiceCompat
     return useServiceGestureDetection;
   }
 
+  @SuppressLint("NewApi")
   private void registerGestureDetection() {
     AccessibilityServiceInfo info = getServiceInfo();
     if (info != null) {

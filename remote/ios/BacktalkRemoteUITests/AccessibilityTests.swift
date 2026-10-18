@@ -8,16 +8,17 @@ final class AccessibilityTests: XCTestCase {
         continueAfterFailure = false
     }
 
-    /// A text field by its label: a field that grows to more lines is a text view.
-    private func field(_ app: XCUIApplication, _ label: String) -> XCUIElement {
-        app.descendants(matching: .any).matching(NSPredicate(format: "label == %@ AND (elementType == %d OR elementType == %d)", label, XCUIElement.ElementType.textField.rawValue, XCUIElement.ElementType.textView.rawValue)).firstMatch
+    /// A text field by its identifier: a field that grows to more lines is a
+    /// text view, and its label is not its placeholder.
+    private func field(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
+        app.descendants(matching: .any).matching(identifier: identifier).firstMatch
     }
 
     /// The audit, saying which element each issue is on.
     private func audit(_ app: XCUIApplication) throws {
         try app.performAccessibilityAudit { issue in
             let element = issue.element.map { "\($0.elementType.rawValue) '\($0.label)'" } ?? "none"
-            print("Audit issue: \(issue.compactDescription); element: \(element)")
+            print("Audit issue: \(issue.compactDescription); element: \(element); \(issue.detailedDescription)")
             return false
         }
     }
@@ -26,8 +27,8 @@ final class AccessibilityTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-resetSettings"]
         app.launch()
-        XCTAssertTrue(field(app, "Access key").waitForExistence(timeout: 5))
-        XCTAssertTrue(field(app, "Relay server").exists)
+        XCTAssertTrue(field(app, "accessKey").waitForExistence(timeout: 5))
+        XCTAssertTrue(field(app, "relayServer").exists)
         XCTAssertTrue(app.buttons["Connect"].exists)
         try audit(app)
     }
@@ -36,7 +37,7 @@ final class AccessibilityTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-resetSettings"]
         app.launch()
-        let key = field(app, "Access key")
+        let key = field(app, "accessKey")
         XCTAssertTrue(key.waitForExistence(timeout: 5))
         key.tap()
         key.typeText("short")
@@ -50,7 +51,7 @@ final class AccessibilityTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-resetSettings"]
         app.launch()
-        let key = field(app, "Access key")
+        let key = field(app, "accessKey")
         XCTAssertTrue(key.waitForExistence(timeout: 5))
         key.tap()
         key.typeText("no phone shares this \(UUID().uuidString)")

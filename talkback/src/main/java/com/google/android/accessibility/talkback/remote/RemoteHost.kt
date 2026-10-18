@@ -67,7 +67,7 @@ class RemoteHost(
     RemoteTouchInput(::screenSize, touch::onMotionEvent, cancelled = touch::cancel)
   private val feeder = RemoteAudioFeeder(service) { rate, pcm -> session.pushAudio(rate.toUInt(), pcm) }
   private val session: HostSession =
-    HostSession.start(server, accessKey, deviceName(service), screen(), this)
+    HostSession.start(server, accessKey, RemoteSettings.deviceName(service), screen(), this)
   private var controllers: List<String> = emptyList()
   private var wakeLock: PowerManager.WakeLock? = null
   @Volatile private var stopped = false
@@ -188,13 +188,5 @@ class RemoteHost(
     private const val TAG = "RemoteHost"
     /** A wake lock needs a limit. After this, the screen can turn off as usual. */
     private const val MAX_WAKE_MS = 4 * 60 * 60 * 1000L
-
-    /** The name this phone shows to controlling devices. */
-    fun deviceName(service: android.content.Context): String =
-      android.provider.Settings.Global.getString(
-          service.contentResolver,
-          android.provider.Settings.Global.DEVICE_NAME,
-        )
-        ?.takeIf { it.isNotBlank() } ?: Build.MODEL
   }
 }

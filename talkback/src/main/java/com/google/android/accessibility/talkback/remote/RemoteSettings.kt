@@ -16,7 +16,10 @@
 
 package com.google.android.accessibility.talkback.remote
 
+import android.content.Context
 import android.content.SharedPreferences
+import android.os.Build
+import android.provider.Settings
 
 /**
  * Settings for remote access: whether this phone is shared, its access key, the relay server, and
@@ -55,4 +58,10 @@ object RemoteSettings {
   fun playsHere(prefs: SharedPreferences): Boolean = prefs.getBoolean(PREF_PLAY_HERE, true)
 
   fun controlKey(prefs: SharedPreferences): String = prefs.getString(PREF_CONTROL_KEY, null) ?: ""
+
+  /** The name this phone shows to the other device: its device name, or its model. */
+  fun deviceName(context: Context): String =
+    Settings.Global.getString(context.contentResolver, Settings.Global.DEVICE_NAME)?.takeIf {
+      it.isNotBlank()
+    } ?: Build.MODEL
 }

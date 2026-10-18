@@ -30,6 +30,7 @@ import android.os.Looper
 import android.view.KeyEvent
 import android.view.MotionEvent
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.google.android.accessibility.talkback.Feedback
 import com.google.android.accessibility.talkback.Pipeline
 import com.google.android.accessibility.talkback.R
@@ -224,7 +225,9 @@ class RemoteAccess(
   }
 
   fun onConfigurationChanged() {
-    host?.onConfigurationChanged()
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      host?.onConfigurationChanged()
+    }
   }
 
   private fun applySharing() {
@@ -255,7 +258,9 @@ class RemoteAccess(
   }
 
   private fun stopHost() {
-    host?.stop()
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      host?.stop()
+    }
     host = null
     hostConfig = null
     lastHost = null
@@ -397,11 +402,7 @@ class RemoteAccess(
           addAction(ACTION_STOP_SHARING)
           addAction(ACTION_STOP_CONTROLLING)
         }
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        service.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
-      } else {
-        service.registerReceiver(receiver, filter)
-      }
+      ContextCompat.registerReceiver(service, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
       receiverRegistered = true
     }
     if (notified[id] == text) {
