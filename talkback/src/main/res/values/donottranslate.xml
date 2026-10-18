@@ -2010,6 +2010,8 @@
   </string-array>
   <item type="id" name="pause_backtalk" />
   <item type="id" name="notification_backtalk_paused" />
+  <item type="id" name="notification_remote_sharing" />
+  <item type="id" name="notification_remote_controlling" />
   <string name="pref_show_context_menu_inspect_item_setting_key" translatable="false">pref_inspect_item_menu_setting_key</string>
   <bool name="pref_show_context_menu_inspect_item_default">false</bool>
   <item type="id" name="inspect_item" />

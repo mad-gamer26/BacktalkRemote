@@ -100,6 +100,9 @@ public class TouchExplorationInterpreter implements AccessibilityEventListener {
 
   private final List<TouchExplorationActionListener> listeners = new ArrayList<>();
 
+  // Whether a remote finger is over no window, so the empty touch is not repeated as it moves.
+  private boolean remoteOverNothing;
+
   public TouchExplorationInterpreter(InputModeTracker inputModeTracker) {
     this.inputModeTracker = inputModeTracker;
     postDelayHandler = new PostDelayHandler(this);
@@ -175,6 +178,7 @@ public class TouchExplorationInterpreter implements AccessibilityEventListener {
   /** @return {@code true} if any accessibility action is successfully performed. */
   private boolean handleTouchInteractionStartEvent(EventId eventId) {
     pendingHover = null;
+    remoteOverNothing = false;
     postDelayHandler.executePendingTouchEndAction();
     setLastTouchedNode(/*touchedNode= */ null);
     postDelayHandler.cancelPendingEmptyTouchAction(/* dispatchPendingActionImmediately= */ false);
@@ -206,8 +210,49 @@ public class TouchExplorationInterpreter implements AccessibilityEventListener {
 
   /** @return {@code true} if any accessibility action is successfully performed. */
   private boolean handleHoverEnterEvent(AccessibilityEvent event, EventId eventId) {
-    final AccessibilityNodeInfoCompat touchedNode =
-        AccessibilityNodeInfoUtils.toCompat(event.getSource());
+    remoteOverNothing = false;
+    return handleHoverEnterNode(AccessibilityNodeInfoUtils.toCompat(event.getSource()), eventId);
+  }
+
+  /** Remote access: a touch of a controlling device started, when it can't be sent as an event. */
+  public void onRemoteTouchStart() {
+    if (handleTouchInteractionStartEvent(null)) {
+      setInputTouchMode();
+    }
+  }
+
+  /** Remote access: a touch of a controlling device ended, when it can't be sent as an event. */
+  public void onRemoteTouchEnd() {
+    if (handleTouchInteractionEndEvent(null)) {
+      setInputTouchMode();
+    }
+  }
+
+  /**
+   * Remote access: the finger of a controlling device moved over {@code touchedNode}, the deepest
+   * node there, or over no window at all for null. Handled as Android's hover from the touch screen
+   * would be.
+   */
+  public void onRemoteHover(@Nullable AccessibilityNodeInfoCompat touchedNode, EventId eventId) {
+    pendingHover = null;
+    if (touchedNode == null) {
+      // Nothing to hover, as over empty space: the empty touch, once until something is touched.
+      if (!remoteOverNothing) {
+        remoteOverNothing = true;
+        setLastTouchedNode(null);
+        postDelayHandler.postDelayEmptyTouchAction(eventId);
+      }
+      return;
+    }
+    remoteOverNothing = false;
+    if (handleHoverEnterNode(touchedNode, eventId)) {
+      setInputTouchMode();
+    }
+  }
+
+  /** @return {@code true} if any accessibility action is successfully performed. */
+  private boolean handleHoverEnterNode(
+      @Nullable AccessibilityNodeInfoCompat touchedNode, EventId eventId) {
     if (touchedNode == null) {
       // Invalid event.
       return false;

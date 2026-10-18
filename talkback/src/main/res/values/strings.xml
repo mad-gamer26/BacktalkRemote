@@ -3,7 +3,7 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2" xmlns:tools="http://schemas.android.com/tools">
 
     <!--The human-readable name of this service. Do not translate. -->
-    <string name="talkback_title" translatable="false">Backtalk</string>
+    <string name="talkback_title" translatable="false">Backtalk Remote</string>
 
     <!--
       Source: A brief description of TalkBack.
@@ -4363,4 +4363,104 @@ Do not use any markdown in your response."</string>
   <!-- Tip notification content for lock screen notifications. [CHAR_LIMIT=NONE] -->
   <string name="notifictions_in_lock_screen_notification_content">To hear notifications when your screen is off, turn on \"Speak notifications when screen is off\" in Backtalk verbosity settings</string>
 
+  <!-- Remote access: settings screen title, and the item that opens it. [CHAR_LIMIT=NONE] -->
+  <string name="title_pref_remote_access">Remote access</string>
+  <!-- Remote access: heading of the settings for letting other devices control this phone. [CHAR_LIMIT=NONE] -->
+  <string name="remote_share_category">Share this phone</string>
+  <!-- Remote access: switch that lets devices with the access key control this phone. [CHAR_LIMIT=NONE] -->
+  <string name="pref_remote_share">Allow remote control</string>
+  <!-- Remote access: summary of the switch. [CHAR_LIMIT=NONE] -->
+  <string name="pref_remote_share_summary">A device with this phone\'s access key can control it through the relay server and hear Backtalk</string>
+  <!-- Remote access: this phone's access key, which controlling devices enter. [CHAR_LIMIT=NONE] -->
+  <string name="pref_remote_share_key">Access key</string>
+  <!-- Remote access: makes a new random access key. [CHAR_LIMIT=NONE] -->
+  <string name="pref_remote_new_key">Make a new access key</string>
+  <!-- Remote access: summary of the new key action. [CHAR_LIMIT=NONE] -->
+  <string name="pref_remote_new_key_summary">Devices using the old key can no longer connect</string>
+  <!-- Remote access: copies the access key to the clipboard. [CHAR_LIMIT=NONE] -->
+  <string name="pref_remote_copy_key">Copy access key</string>
+  <!-- Remote access: shares the access key with another app. [CHAR_LIMIT=NONE] -->
+  <string name="pref_remote_share_key_with">Send access key</string>
+  <!-- Remote access: switch for playing Backtalk on this phone while it is controlled. [CHAR_LIMIT=NONE] -->
+  <string name="pref_remote_play_here">Play Backtalk on this phone while controlled</string>
+  <!-- Remote access: summary of the play switch. [CHAR_LIMIT=NONE] -->
+  <string name="pref_remote_play_here_summary">When off, only the controlling device hears Backtalk</string>
+  <!-- Remote access: the relay server setting. [CHAR_LIMIT=NONE] -->
+  <string name="pref_remote_server">Relay server</string>
+  <!-- Remote access: heading of the settings for controlling another phone. [CHAR_LIMIT=NONE] -->
+  <string name="remote_control_category">Control another phone</string>
+  <!-- Remote access: the access key of the phone to control. [CHAR_LIMIT=NONE] -->
+  <string name="pref_remote_control_key">Access key of the other phone</string>
+  <!-- Remote access: starts controlling another phone. [CHAR_LIMIT=NONE] -->
+  <string name="pref_remote_start_control">Start controlling</string>
+  <!-- Remote access: summary of start controlling. [CHAR_LIMIT=NONE] -->
+  <string name="pref_remote_start_control_summary">While connected, this screen controls the other phone. To stop, press volume down three times quickly.</string>
+  <!-- Remote access: stops controlling another phone. [CHAR_LIMIT=NONE] -->
+  <string name="pref_remote_stop_control">Stop controlling</string>
+  <!-- Remote access: heading of the status. [CHAR_LIMIT=NONE] -->
+  <string name="pref_remote_status">Status</string>
+  <!-- Remote access: shows the audio stream's details. [CHAR_LIMIT=NONE] -->
+  <string name="pref_remote_audio_details">Audio connection details</string>
+  <!-- Remote access: the key was copied. [CHAR_LIMIT=NONE] -->
+  <string name="remote_key_copied">Access key copied</string>
+  <!-- Remote access: no key entered or saved. [CHAR_LIMIT=NONE] -->
+  <string name="remote_not_set">Not set</string>
+  <!-- Remote access: subject of the message that sends the access key. [CHAR_LIMIT=NONE] -->
+  <string name="remote_share_key_subject">Backtalk Remote access key</string>
+  <!-- Remote access: needs Android 13. [CHAR_LIMIT=NONE] -->
+  <string name="remote_needs_android_13">Remote access needs Android 13 or later</string>
+  <!-- Remote access: the native part is missing from this build. [CHAR_LIMIT=NONE] -->
+  <string name="remote_not_in_build">Remote access is not in this build of Backtalk</string>
+  <!-- Remote access: Backtalk is off. [CHAR_LIMIT=NONE] -->
+  <string name="remote_backtalk_off">Turn on Backtalk to use remote access</string>
+  <!-- Remote access: controlling needs Backtalk's own gesture handling. [CHAR_LIMIT=NONE] -->
+  <string name="remote_needs_gesture_handling">To control another phone, turn on Handle gestures in Backtalk in advanced settings</string>
+
+  <!-- Remote access status, sharing: connecting to the relay. [CHAR_LIMIT=NONE] -->
+  <string name="remote_host_connecting">Connecting to the relay server</string>
+  <!-- Remote access status, sharing: ready. [CHAR_LIMIT=NONE] -->
+  <string name="remote_host_waiting">Ready. No device is controlling this phone.</string>
+  <!-- Remote access status, sharing: controlled, %1$s lists the devices. [CHAR_LIMIT=NONE] -->
+  <string name="remote_host_controlled">Controlled by %1$s</string>
+  <!-- Remote access status: reconnecting. [CHAR_LIMIT=NONE] -->
+  <string name="remote_reconnecting">Connection lost. Connecting again.</string>
+  <!-- Remote access status: stopped. [CHAR_LIMIT=NONE] -->
+  <string name="remote_off">Off</string>
+  <!-- Remote access status: failed, %1$s says why. [CHAR_LIMIT=NONE] -->
+  <string name="remote_failed">Stopped: %1$s</string>
+  <!-- Remote access: status with a detail, %1$s the status, %2$s the detail. [CHAR_LIMIT=NONE] -->
+  <string name="remote_status_with_detail">%1$s %2$s</string>
+
+  <!-- Remote access status, controlling: no phone with the key. [CHAR_LIMIT=NONE] -->
+  <string name="remote_control_waiting">Waiting for the phone. No phone is sharing with this access key right now.</string>
+  <!-- Remote access status, controlling: connected to %1$s. [CHAR_LIMIT=NONE] -->
+  <string name="remote_control_connected">Controlling %1$s</string>
+  <!-- Remote access status, controlling: no audio yet. [CHAR_LIMIT=NONE] -->
+  <string name="remote_control_audio_waiting">Waiting for audio.</string>
+  <!-- Remote access status, controlling: audio playing. [CHAR_LIMIT=NONE] -->
+  <string name="remote_control_audio_playing">Audio playing.</string>
+
+  <!-- Remote access, spoken: %1$s started controlling this phone. [CHAR_LIMIT=NONE] -->
+  <string name="remote_controller_joined">%1$s is controlling this phone</string>
+  <!-- Remote access, spoken: %1$s stopped controlling this phone. [CHAR_LIMIT=NONE] -->
+  <string name="remote_controller_left">%1$s stopped controlling this phone</string>
+  <!-- Remote access, spoken: now controlling %1$s. [CHAR_LIMIT=NONE] -->
+  <string name="remote_control_started">Controlling %1$s. To stop, press volume down three times.</string>
+  <!-- Remote access, spoken: stopped controlling. [CHAR_LIMIT=NONE] -->
+  <string name="remote_control_stopped">Stopped controlling</string>
+  <!-- Remote access, spoken: sharing turned on and ready. [CHAR_LIMIT=NONE] -->
+  <string name="remote_sharing_ready">This phone can be controlled remotely</string>
+  <!-- Remote access, spoken: no text field has focus for typed text. [CHAR_LIMIT=NONE] -->
+  <string name="remote_type_no_field">No text field to type into</string>
+  <!-- Remote access, spoken: typing failed. [CHAR_LIMIT=NONE] -->
+  <string name="remote_type_failed">Could not type into this field</string>
+
+  <!-- Remote access: notification channel. [CHAR_LIMIT=NONE] -->
+  <string name="notification_channel_remote_access">Remote access</string>
+  <!-- Remote access: notification title while sharing. [CHAR_LIMIT=NONE] -->
+  <string name="notification_title_remote_sharing">Sharing this phone</string>
+  <!-- Remote access: notification title while controlling. [CHAR_LIMIT=NONE] -->
+  <string name="notification_title_remote_controlling">Controlling another phone</string>
+  <!-- Remote access: notification action that stops sharing. [CHAR_LIMIT=NONE] -->
+  <string name="notification_action_stop_sharing">Stop sharing</string>
 </resources>

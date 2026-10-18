@@ -116,7 +116,7 @@ class TouchInteractionMonitorTest {
       TouchInteractionMonitor(
         display,
         SharedPreferencesUtils.getSharedPreferences(service),
-        controller,
+        TouchController.of(controller),
         service,
         PrimesController(),
         reporter,

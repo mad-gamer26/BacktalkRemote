@@ -473,7 +473,8 @@ public class FeedbackController {
 
   private void playFromPool(int resId, float rate, float leftVolume, float rightVolume) {
     @Nullable String path = customSoundPath(resId);
-    if (mLowLatencyAudio
+    // Remote access hears sounds through the player's tap, so sounds use it while tapped.
+    if ((mLowLatencyAudio || LowLatencyAudio.isTapped())
         && !LowLatencyAudio.isMicrophoneInUse()
         && playLowLatency(resId, path, rate, leftVolume, rightVolume)) {
       return;
@@ -830,7 +831,8 @@ public class FeedbackController {
   /**
    * Plays the sound, or the file at {@code path} in its place, through the low-latency player, and
    * returns whether it did. A sound plays the usual way the first time, while it is decoded for
-   * next time, and whenever it cannot be decoded.
+   * next time, and whenever it cannot be decoded. While remote access taps the player, the first
+   * time plays through the player too, once decoded, so that the controlling device hears it.
    */
   private boolean playLowLatency(
       int resId, @Nullable String path, float rate, float leftVolume, float rightVolume) {
@@ -848,7 +850,15 @@ public class FeedbackController {
           // Null marks a sound being decoded, or one that cannot be.
           mClips.put(key, null);
           trimClips(key);
-          mDecoder.execute(() -> decodeClip(player, key, resId, path));
+          boolean playWhenDecoded = LowLatencyAudio.isTapped();
+          mDecoder.execute(
+              () -> {
+                LowLatencyAudio.@Nullable Clip decoded = decodeClip(player, key, resId, path);
+                if (playWhenDecoded && decoded != null) {
+                  player.play(decoded, leftVolume, rightVolume, rate);
+                }
+              });
+          return playWhenDecoded;
         }
         return false;
       }
@@ -857,8 +867,9 @@ public class FeedbackController {
     return true;
   }
 
-  /** Decodes a sound for {@link #mClips}, on {@link #mDecoder}. */
-  private void decodeClip(LowLatencyAudio player, String key, int resId, @Nullable String path) {
+  /** Decodes a sound for {@link #mClips}, on {@link #mDecoder}, and returns it, or null. */
+  private LowLatencyAudio.@Nullable Clip decodeClip(
+      LowLatencyAudio player, String key, int resId, @Nullable String path) {
     LowLatencyAudio.@Nullable Clip prepared = null;
     try {
       AudioDecoder.@Nullable Decoded decoded =
@@ -872,7 +883,7 @@ public class FeedbackController {
       LogUtils.e(TAG, "Cannot prepare sound %s: %s", key, e);
     }
     if (prepared == null) {
-      return;
+      return null;
     }
     synchronized (mClips) {
       // Not if the sounds were dropped while it decoded.
@@ -882,6 +893,7 @@ public class FeedbackController {
         trimClips(key);
       }
     }
+    return prepared;
   }
 
   /**

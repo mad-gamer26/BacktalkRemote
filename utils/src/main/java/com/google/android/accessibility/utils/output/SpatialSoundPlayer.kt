@@ -132,6 +132,16 @@ class SpatialSoundPlayer(private val context: Context) {
     // Sounds of one moment, like a list sound and a control sound, play together. A sound from
     // before stops.
     stopRequestedBefore(requested - TOGETHER_MS)
+    if (LowLatencyAudio.isTapped()) {
+      // Remote access hears what the low-latency player mixes, so the sound, already placed in 3D,
+      // plays there instead of on a track of its own.
+      val player = LowLatencyAudio.get(context, FeedbackController.feedbackAttributes())
+      if (player != null) {
+        val level = volume.coerceIn(0f, 1f)
+        player.play(LowLatencyAudio.Clip(stereo, Hrtf.SAMPLE_RATE), level, level, 1f)
+        return
+      }
+    }
     val frames = stereo.size / 2
     val newTrack =
       AudioTrack.Builder()

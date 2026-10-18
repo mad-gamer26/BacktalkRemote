@@ -1,0 +1,71 @@
+# XcodeGen spec for the Backtalk Remote iPhone app: control an Android
+# phone running Backtalk Remote, and hear its Backtalk. Build the core
+# first, then:
+#   remote/ios/build-core.sh && cd remote/ios && xcodegen generate
+# Running on an iPhone needs a development team:
+#   xcodebuild ... DEVELOPMENT_TEAM=XXXXXXXXXX -allowProvisioningUpdates
+name: BacktalkRemote
+options:
+  bundleIdPrefix: com.madgamer
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  BacktalkRemote:
+    type: application
+    platform: iOS
+    sources:
+      - BacktalkRemote
+      - path: Generated/backtalk_remote.swift
+    info:
+      path: BacktalkRemote/Info.plist
+      properties:
+        CFBundleDisplayName: Backtalk Remote
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        UILaunchScreen: {}
+        # The phone's audio keeps playing while another app is in front.
+        UIBackgroundModes: [audio]
+        # Only standard, published encryption (XChaCha20-Poly1305, TLS),
+        # which is exempt from export documentation.
+        ITSAppUsesNonExemptEncryption: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.madgamer.BacktalkRemote
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: NO
+        # The core is Rust with a C interface; UniFFI's generated Swift.
+        SWIFT_STRICT_CONCURRENCY: minimal
+    dependencies:
+      - framework: Generated/BacktalkRemoteCore.xcframework
+        embed: false
+      - sdk: AVFoundation.framework
+      - sdk: AudioToolbox.framework
+      - sdk: CoreAudio.framework
+      - sdk: Security.framework
+      - sdk: SystemConfiguration.framework
+  BacktalkRemoteUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [BacktalkRemoteUITests]
+    dependencies:
+      - target: BacktalkRemote
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.madgamer.BacktalkRemoteUITests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
+schemes:
+  BacktalkRemote:
+    build:
+      targets:
+        BacktalkRemote: all
+        BacktalkRemoteUITests: [test]
+    test:
+      targets: [BacktalkRemoteUITests]

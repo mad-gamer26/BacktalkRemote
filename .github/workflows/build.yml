@@ -27,6 +27,28 @@ jobs:
       # Caches Gradle and validates the wrapper jar checksum.
       - uses: gradle/actions/setup-gradle@v6
 
+      # Remote access: its native core (remote/core) is Rust, built for each Android ABI with
+      # cargo-ndk during the Gradle build.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: remote
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk --locked
+
+      # The protocol, the relay, keys and sealing, the reclock, and a phone and a controlling device
+      # through a relay on the runner, audio included.
+      - name: Test remote access
+        working-directory: remote
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --all-targets -- -D warnings
+          cargo test
+
       # Signs builds with the same debug key as the maintainer's own builds, so that installed
       # development builds can update in place. Pull requests from forks do not get the secret,
       # so they are signed with a new debug key.

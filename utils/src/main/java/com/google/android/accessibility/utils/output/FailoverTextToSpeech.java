@@ -1440,7 +1440,8 @@ public class FailoverTextToSpeech {
 
   /** The player for speech, or null if speech should play the usual way. */
   private @Nullable LowLatencyAudio lowLatencyPlayer() {
-    if (!lowLatencyAudio
+    // Remote access hears speech through the player's tap, so speech uses it while tapped.
+    if ((!lowLatencyAudio && !LowLatencyAudio.isTapped())
         || LowLatencyAudio.isMicrophoneInUse()
         || inCall()
         || audioModeSettling()

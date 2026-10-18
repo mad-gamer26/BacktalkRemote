@@ -55,6 +55,10 @@
         android:key="@string/pref_direct_touch_key"
         android:title="@string/title_pref_direct_touch" />
     <com.google.android.accessibility.material.preference.AccessibilitySuitePreference
+        android:fragment="com.google.android.accessibility.talkback.remote.RemoteAccessFragment"
+        android:key="pref_remote_access"
+        android:title="@string/title_pref_remote_access" />
+    <com.google.android.accessibility.material.preference.AccessibilitySuitePreference
         android:key="@string/pref_category_manage_keyboard_shortcut_key"
         android:title="@string/title_pref_manage_keyboard_shortcuts"
         android:fragment="com.google.android.accessibility.talkback.preference.base.TalkBackKeyboardShortcutPreferenceFragment" />

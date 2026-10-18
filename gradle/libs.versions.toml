@@ -49,6 +49,9 @@ zxing-core = "com.google.zxing:core:3.5.4"
 # On-device AI
 litertlm = "com.google.ai.edge.litertlm:litertlm-android:0.18.0"
 
+# Remote access: UniFFI's Kotlin bindings call the native core through JNA.
+jna = { module = "net.java.dev.jna:jna", version = "5.19.1" }
+
 # Cloud services
 volley = "com.android.volley:volley:1.2.1"
 

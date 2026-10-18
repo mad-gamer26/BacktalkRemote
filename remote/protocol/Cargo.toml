@@ -1,0 +1,17 @@
+[package]
+name = "backtalk-remote-protocol"
+description = "Backtalk remote access: the messages between the apps and the relay. No I/O."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+
+[lints]
+workspace = true

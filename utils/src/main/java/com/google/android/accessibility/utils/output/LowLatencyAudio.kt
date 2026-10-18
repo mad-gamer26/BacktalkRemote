@@ -593,6 +593,11 @@ class LowLatencyAudio private constructor(context: Context, private val attribut
         primed = true
         if (idle) idleFrames += burstFrames
       }
+      // Outside the lock, so that a slow tap never holds up new sounds and speech.
+      tap?.let {
+        it.onMixed(buffer, sampleRate)
+        if (tapMutesSpeaker) buffer.fill(0f)
+      }
       if (!remakeTrack && play(output) && write(output, buffer)) continue
       if (released || broken) continue
       // Android stopped taking audio on this track, such as after its output changed. Make a new
@@ -808,8 +813,35 @@ class LowLatencyAudio private constructor(context: Context, private val attribut
     LogUtils.d(TAG, "Track ran short, now %d frames", output.bufferSizeInFrames)
   }
 
+  /** Receives what the players mix, as they play it: for remote access, which sends it on. */
+  fun interface Tap {
+    /**
+     * Called on a player's audio thread with each burst it plays: interleaved stereo frames at
+     * [sampleRate]. [frames] is reused for the next burst, so copy what you keep, and return at
+     * once.
+     */
+    fun onMixed(frames: FloatArray, sampleRate: Int)
+  }
+
   companion object {
     private const val TAG = "LowLatencyAudio"
+
+    @Volatile private var tap: Tap? = null
+    @Volatile private var tapMutesSpeaker = false
+
+    /**
+     * Hands what the players mix to [tap], or to no one for null. With [muteSpeaker], the players
+     * play silence on this device meanwhile. While a tap is set, Backtalk sends speech and sounds
+     * through these players even if the low-latency setting is off, so that the tap hears them all.
+     */
+    @JvmStatic
+    fun setTap(tap: Tap?, muteSpeaker: Boolean) {
+      tapMutesSpeaker = muteSpeaker && tap != null
+      this.tap = tap
+    }
+
+    /** Whether a [Tap] is set. */
+    @JvmStatic fun isTapped(): Boolean = tap != null
     private const val DEFAULT_RATE = 48_000
     private const val DEFAULT_BURST = 192
     private const val QUEUED_BURSTS = 2

@@ -1,0 +1,57 @@
+[package]
+name = "backtalk-remote-core"
+description = "Backtalk remote access: connects a phone and its controllers through a relay, seals what they say to each other, and carries Backtalk's audio with AudioNet's transport. Shared by the Android (Kotlin) and iPhone (Swift) apps through UniFFI."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "backtalk_remote"
+# cdylib for Android (and for uniffi-bindgen to read the interface);
+# staticlib for the iPhone app.
+crate-type = ["lib", "staticlib", "cdylib"]
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/bin/uniffi-bindgen.rs"
+required-features = ["bindgen"]
+
+[features]
+bindgen = ["uniffi/cli"]
+
+[dependencies]
+backtalk-remote-protocol.workspace = true
+audionet-audio.workspace = true
+audionet-codec.workspace = true
+audionet-transport.workspace = true
+audionet-engine.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio.workspace = true
+futures-util.workspace = true
+tokio-tungstenite.workspace = true
+rustls.workspace = true
+argon2.workspace = true
+hkdf.workspace = true
+sha2.workspace = true
+chacha20poly1305.workspace = true
+rand.workspace = true
+base64.workspace = true
+cpal.workspace = true
+uniffi.workspace = true
+
+# Hands the app's Java context to cpal's AAudio backend
+# (RemoteNative.attach in the Android app), as AudioNet's own
+# audionet-android does. The versions cpal already uses.
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.22"
+ndk-context = "0.1"
+
+[dev-dependencies]
+backtalk-remote-relay = { path = "../relay" }
+axum.workspace = true
+
+[lints]
+workspace = true

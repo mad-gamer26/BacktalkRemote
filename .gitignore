@@ -23,3 +23,8 @@ scripting/quickjs/.cxx/
 scripting/quickjs/build/
 talkback/build/
 utils/build/
+
+# Remote access: Rust build output, and what remote/ios/build-core.sh and XcodeGen generate.
+remote/target/
+remote/ios/Generated/
+remote/ios/BacktalkRemote.xcodeproj/

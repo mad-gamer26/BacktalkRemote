@@ -1,0 +1,58 @@
+# Remote access for Backtalk: the native core shared by the Android and
+# iPhone apps, and the relay server. See docs/remote-access.md.
+[workspace]
+resolver = "3"
+members = ["protocol", "core", "relay"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+publish = false
+
+[workspace.dependencies]
+backtalk-remote-protocol = { path = "protocol" }
+# AudioNet's audio transport: Opus, RTP framing, XChaCha20-Poly1305 media
+# encryption, the receiver's reordering and loss concealment, and the
+# playout buffer with drift and depth control. Pinned to a reviewed commit.
+audionet-audio = { git = "https://github.com/mad-gamer26/AudioNet", rev = "dfbbe512061d8ebe4329edb61d59b2f58edd4f24" }
+audionet-codec = { git = "https://github.com/mad-gamer26/AudioNet", rev = "dfbbe512061d8ebe4329edb61d59b2f58edd4f24" }
+audionet-transport = { git = "https://github.com/mad-gamer26/AudioNet", rev = "dfbbe512061d8ebe4329edb61d59b2f58edd4f24" }
+audionet-engine = { git = "https://github.com/mad-gamer26/AudioNet", rev = "dfbbe512061d8ebe4329edb61d59b2f58edd4f24" }
+
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tokio = { version = "1.53", features = ["rt-multi-thread", "macros", "net", "sync", "time", "signal"] }
+futures-util = "0.3"
+# The relay connection: WebSocket over TLS, with Mozilla's root
+# certificates built in, so it needs no platform trust-store glue on
+# Android or iOS.
+tokio-tungstenite = { version = "0.28", default-features = false, features = ["connect", "handshake", "rustls-tls-webpki-roots"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+# Keys: Argon2id stretches the access key, HKDF separates the keys made
+# from it, and XChaCha20-Poly1305 seals control messages (AudioNet already
+# uses the same RustCrypto crates for media).
+argon2 = "0.6"
+hkdf = "0.13.0"
+sha2 = "0.11.0"
+chacha20poly1305 = "0.11.0"
+rand = "0.10.3"
+base64 = "0.23"
+cpal = "0.18.2"
+uniffi = "0.32"
+axum = { version = "0.8.9", features = ["ws"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+undocumented_unsafe_blocks = "warn"
+dbg_macro = "warn"
+
+# Optimize dependencies (libopus, the resampler, crypto) even in debug
+# builds, so tests run at realistic speed.
+[profile.dev.package."*"]
+opt-level = 3

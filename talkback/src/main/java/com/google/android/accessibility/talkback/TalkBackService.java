@@ -76,6 +76,7 @@ import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.media.AudioManager;
+import android.hardware.display.DisplayManager;
 import android.os.Build;
 import android.os.Build.VERSION;
 import android.os.Bundle;
@@ -87,11 +88,14 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.util.SparseArray;
 import android.view.Display;
+import android.view.MotionEvent;
+import android.view.WindowManager;
 import android.view.InputDevice;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import androidx.annotation.RequiresApi;
 import androidx.annotation.VisibleForTesting;
 import androidx.core.content.ContextCompat;
 import androidx.core.os.UserManagerCompat;
@@ -159,6 +163,7 @@ import com.google.android.accessibility.talkback.contextmenu.ListMenuManager;
 import com.google.android.accessibility.talkback.controller.TelevisionNavigationController;
 import com.google.android.accessibility.talkback.controlsounds.ControlSoundsSettings;
 import com.google.android.accessibility.talkback.directtouch.DirectTouchController;
+import com.google.android.accessibility.talkback.remote.RemoteAccess;
 import com.google.android.accessibility.talkback.eventprocessor.AccessibilityEventProcessor;
 import com.google.android.accessibility.talkback.eventprocessor.AccessibilityEventProcessor.TalkBackListener;
 import com.google.android.accessibility.talkback.eventprocessor.PhoneticLetterMode;
@@ -779,6 +784,10 @@ public class TalkBackService extends AccessibilityServiceCompat
   private ScrollPositionInterpreter scrollPositionInterpreter;
   private ScreenStateMonitor screenStateMonitor;
   private DirectTouchController directTouchController;
+  // Remote access: sharing this phone and controlling others. Null before setup.
+  private @Nullable RemoteAccess remoteAccess;
+  // Where touch exploration starts, kept for remote access, whose touches explore too.
+  private @Nullable TouchExplorationInterpreter touchExplorationInterpreter;
   private PauseController pauseController;
   private AudioDeviceRouter audioDeviceRouter;
   private @Nullable ScriptHost scriptHost;
@@ -961,6 +970,11 @@ public class TalkBackService extends AccessibilityServiceCompat
       directTouchController = null;
     }
 
+    if (remoteAccess != null) {
+      remoteAccess.shutdown();
+      remoteAccess = null;
+    }
+
     if (scriptHost != null) {
       Scripts.setHost(null);
       scriptHost.shutdown();
@@ -1020,6 +1034,9 @@ public class TalkBackService extends AccessibilityServiceCompat
   @Override
   public void onConfigurationChanged(Configuration newConfig) {
     this.getTheme().applyStyle(R.style.TalkbackBaseTheme, /* force= */ true);
+    if (remoteAccess != null) {
+      remoteAccess.onConfigurationChanged();
+    }
 
     // onConfigurationChanged may be called before TalkBack initialization. To avoid crash, each
     // listener should checks the instance is null or not.
@@ -1336,6 +1353,10 @@ public class TalkBackService extends AccessibilityServiceCompat
   protected boolean onKeyEventInternal(KeyEvent keyEvent) {
     if (keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
       RecentUserInput.mark();
+    }
+    if (remoteAccess != null) {
+      // Watches for the keys that stop controlling another phone; they still work as usual.
+      remoteAccess.onKeyEvent(keyEvent);
     }
     if (pauseController != null) {
       // While paused, keys pass to apps except the ones that resume Backtalk.
@@ -2345,8 +2366,7 @@ public class TalkBackService extends AccessibilityServiceCompat
 
     compositor.setSpeaker(pipeline.getSpeaker());
 
-    TouchExplorationInterpreter touchExplorationInterpreter =
-        new TouchExplorationInterpreter(inputModeTracker);
+    touchExplorationInterpreter = new TouchExplorationInterpreter(inputModeTracker);
 
     if (FeatureSupport.supportMagnificationController()) {
       processorMagnification =
@@ -2565,6 +2585,11 @@ public class TalkBackService extends AccessibilityServiceCompat
       ringerModeAndScreenMonitor.addScreenChangedListener(directTouchController);
       displayMonitor.addDisplayStateChangedListener(directTouchController);
     }
+
+    remoteAccess =
+        new RemoteAccess(
+            this, prefs, pipeline.getFeedbackReturner(), touchExplorationInterpreter);
+    remoteAccess.start();
 
     addEventListener(new ProcessorGestureVibrator(pipeline.getFeedbackReturner()));
 
@@ -4243,6 +4268,62 @@ public class TalkBackService extends AccessibilityServiceCompat
     }
   }
 
+  /** Remote access, once Backtalk is set up, or null. */
+  public @Nullable RemoteAccess getRemoteAccess() {
+    return remoteAccess;
+  }
+
+  /** Whether Backtalk recognizes gestures itself, getting the raw touch, on some display now. */
+  public boolean isServiceGestureDetectionActive() {
+    return displayIdToTouchInteractionMonitors.size() > 0;
+  }
+
+  /**
+   * A gesture monitor for the touches of a device controlling this phone, set up as the touch
+   * screen's is, with [controller] in place of Android's.
+   */
+  @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+  public TouchInteractionMonitor createRemoteTouchMonitor(TouchController controller) {
+    Display display =
+        getSystemService(DisplayManager.class).getDisplay(Display.DEFAULT_DISPLAY);
+    TouchInteractionMonitor monitor =
+        new TouchInteractionMonitor(
+            display,
+            prefs,
+            controller,
+            this,
+            primesController,
+            new TouchExplorationModeFailureReporter(analytics),
+            // Touch exploration is this phone's own setting, not the controller's.
+            enabled -> {},
+            this::onGestureDebug);
+    monitor.setRemote(true);
+    monitor.setMultiFingerGesturesEnabled(true);
+    monitor.setTwoFingerPassthroughEnabled(true);
+    monitor.setServiceHandlesDoubleTap(true);
+    userInterface.registerListener(monitor);
+    return monitor;
+  }
+
+  /** Undoes {@link #createRemoteTouchMonitor}, once the monitor is stopped. */
+  public void releaseRemoteTouchMonitor(TouchInteractionMonitor monitor) {
+    userInterface.unregisterListener(monitor);
+  }
+
+  /**
+   * A touch screen event, which goes to the phone this one controls while it does. Returns whether
+   * it went, in which case Backtalk here ignores it.
+   */
+  @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+  boolean forwardTouchToRemote(MotionEvent event) {
+    if (remoteAccess == null || !remoteAccess.isControlling()) {
+      return false;
+    }
+    android.graphics.Rect bounds =
+        getSystemService(WindowManager.class).getMaximumWindowMetrics().getBounds();
+    return remoteAccess.onLocalMotionEvent(event, bounds.width(), bounds.height());
+  }
+
   protected boolean shouldUseTalkbackGestureDetection() {
     if (!FeatureSupport.supportGestureDetection()) {
       return false;
@@ -4278,7 +4359,7 @@ public class TalkBackService extends AccessibilityServiceCompat
           new TouchInteractionMonitor(
               display,
               prefs,
-              touchInteractionController,
+              TouchController.of(touchInteractionController),
               this,
               primesController,
               new TouchExplorationModeFailureReporter(analytics),

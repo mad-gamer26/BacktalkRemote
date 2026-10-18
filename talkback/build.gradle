@@ -18,6 +18,13 @@ dependencies {
     wearImplementation project(':materialtheme')
     phoneImplementation project(':quickjs')
     implementation libs.litertlm
+    // Remote access: the Kotlin bindings of the native core call it through JNA, whose Android
+    // package (the aar) brings its native part for each ABI.
+    implementation(libs.jna) {
+        artifact {
+            type = 'aar'
+        }
+    }
     testImplementation libs.junit
     testImplementation libs.json
     testImplementation libs.robolectric
@@ -47,4 +54,49 @@ android {
     buildFeatures {
         aidl = true
     }
+    // The NDK the other native modules use, for the remote access core.
+    ndkVersion = "27.3.13750724"
 }
+
+// Remote access: the native core in remote/ (Rust), built for each ABI with cargo-ndk, and its
+// Kotlin bindings, generated with UniFFI. It needs Rust with the Android targets and cargo-ndk;
+// see docs/remote-access.md.
+def remoteDir = rootProject.file('remote')
+def remoteJniLibs = layout.buildDirectory.dir('remoteCore/jniLibs')
+def remoteKotlin = layout.buildDirectory.dir('remoteCore/kotlin')
+def remoteAbis = ['armeabi-v7a', 'arm64-v8a', 'x86_64']
+def cargo = System.getProperty('os.name').toLowerCase().contains('windows') ? 'cargo.exe' : 'cargo'
+
+def buildRemoteCore = tasks.register('buildRemoteCore', Exec) {
+    description = 'Builds the remote access core for Android.'
+    inputs.dir(new File(remoteDir, 'core/src'))
+    inputs.dir(new File(remoteDir, 'protocol/src'))
+    inputs.files(new File(remoteDir, 'Cargo.toml'), new File(remoteDir, 'Cargo.lock'),
+            new File(remoteDir, 'core/Cargo.toml'), new File(remoteDir, 'protocol/Cargo.toml'))
+    outputs.dir(remoteJniLibs)
+    workingDir remoteDir
+    def ndk = androidComponents.sdkComponents.ndkDirectory
+    doFirst { environment 'ANDROID_NDK_HOME', ndk.get().asFile.absolutePath }
+    def targets = remoteAbis.collectMany { ['-t', it] }
+    commandLine([cargo, 'ndk'] + targets + ['--platform', '26', '-o',
+            remoteJniLibs.get().asFile.absolutePath, 'build', '--release',
+            '-p', 'backtalk-remote-core', '--lib'])
+}
+
+def generateRemoteBindings = tasks.register('generateRemoteBindings', Exec) {
+    description = 'Generates the Kotlin bindings of the remote access core.'
+    dependsOn buildRemoteCore
+    inputs.dir(remoteJniLibs)
+    outputs.dir(remoteKotlin)
+    workingDir remoteDir
+    // Any of the libraries just built has the same interface.
+    def library = new File(remoteDir, 'target/x86_64-linux-android/release/libbacktalk_remote.so')
+    commandLine cargo, 'run', '--release', '-q', '-p', 'backtalk-remote-core', '--features',
+            'bindgen', '--bin', 'uniffi-bindgen', '--', 'generate', '--library',
+            library.absolutePath, '--language', 'kotlin', '--no-format', '--out-dir',
+            remoteKotlin.get().asFile.absolutePath
+}
+
+android.sourceSets.main.jniLibs.srcDir(remoteJniLibs.get().asFile)
+android.sourceSets.main.kotlin.srcDir(remoteKotlin.get().asFile)
+tasks.named('preBuild') { dependsOn generateRemoteBindings }

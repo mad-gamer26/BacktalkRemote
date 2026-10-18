@@ -1,0 +1,35 @@
+# systemd unit for the Backtalk remote access relay.
+# Install: /etc/systemd/system/backtalk-remote-relay.service, then
+#   systemctl daemon-reload && systemctl enable --now backtalk-remote-relay
+[Unit]
+Description=Backtalk remote access relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=true
+# The WebSocket on this machine only, behind the TLS proxy; media (UDP) open to the internet.
+ExecStart=/opt/backtalk-remote/bin/backtalk-remote-relay --listen 127.0.0.1:39860 --udp 0.0.0.0:39861
+Restart=on-failure
+RestartSec=2
+
+# Hardening: the relay keeps nothing on disk and only uses the network.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

@@ -143,9 +143,11 @@ public class TouchInteractionMonitor
           GESTURE_SWIPE_UP_AND_RIGHT);
 
   private boolean stateInActive = true;
+  // Whether the touches come from a device controlling this phone rather than its touch screen.
+  private boolean remote = false;
   private int state;
   private int previousState;
-  private final TouchInteractionController controller;
+  private final TouchController controller;
   private Context context;
   private final Display display;
   private final ReceivedPointerTracker receivedPointerTracker;
@@ -309,7 +311,7 @@ public class TouchInteractionMonitor
   public TouchInteractionMonitor(
       Display display,
       SharedPreferences prefs,
-      TouchInteractionController controller,
+      TouchController controller,
       TalkBackService service,
       PrimesController primesController,
       TouchExplorationModeFailureReporter touchExplorationModeFailureReporter,
@@ -483,6 +485,10 @@ public class TouchInteractionMonitor
   @SuppressWarnings("Override")
   @Override
   public void onMotionEvent(MotionEvent event) {
+    if (!remote && event != null && service.forwardTouchToRemote(event)) {
+      // This phone is controlling another, whose Backtalk handles the touch.
+      return;
+    }
     if (event != null) {
       int action = event.getActionMasked();
       if (action == ACTION_DOWN) {
@@ -1204,6 +1210,11 @@ public class TouchInteractionMonitor
     // TYPE_GESTURE_DETECTION_END when using TalkBack gesture detection. So the module has to
     // manually notify the service that gesture detection has been started.
     service.onGestureDetectionStarted();
+  }
+
+  /** Marks this monitor as the one for touches from a device controlling this phone. */
+  public void setRemote(boolean remote) {
+    this.remote = remote;
   }
 
   public void setMultiFingerGesturesEnabled(boolean mode) {

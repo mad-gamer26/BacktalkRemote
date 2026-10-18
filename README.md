@@ -1,3 +1,9 @@
+# Backtalk Remote
+
+Backtalk Remote is a fork of [Backtalk](https://github.com/trypsynth/backtalk) that adds remote access: an iPhone, or another Android phone, controls the phone through a relay server, its touches handled by the phone's Backtalk exactly as the phone's own touch screen, and hears the phone's Backtalk. See [Remote access](docs/remote-access.md). The iPhone app is in `remote/ios`, the shared native core and the relay server in `remote/`. Backtalk Remote installs as its own app, `com.madgamer.backtalkremote`, next to Backtalk, and updates from this repository's builds.
+
+Everything below is Backtalk's own documentation, which applies to Backtalk Remote too.
+
 # Backtalk
 
 Backtalk is a fork of [Google's TalkBack](https://github.com/google/talkback), the screen reader for blind and visually-impaired users of Android. It adds fixes and features on top of Google's source releases. It is not affiliated with Google.
@@ -22,7 +28,7 @@ Scripts run in [QuickJS-NG](https://github.com/quickjs-ng/quickjs), copyright Fa
 
 ## Build
 
-You need JDK 17 or newer, the Android SDK with platform 37, and NDK 27.3.13750724. The Gradle wrapper downloads the correct Gradle version, so you do not need to install Gradle.
+You need JDK 17 or newer, the Android SDK with platform 37, and NDK 27.3.13750724. The Gradle wrapper downloads the correct Gradle version, so you do not need to install Gradle. Backtalk Remote also needs Rust, with the Android targets and `cargo-ndk`, for its remote access core: see [Building](docs/remote-access.md#building).
 
 ### Linux or macOS
 
@@ -73,7 +79,7 @@ Install the APK on your device with adb.
 
 On Windows, `.\deploy.ps1` builds the APK and installs it with adb. This script needs PowerShell 7. To install the last build without building again, use `-SkipBuild`.
 
-Backtalk installs as `fyi.quin.backtalk`, so it does not replace Google's TalkBack. The two apps have separate settings. Because its app ID is its own, Backtalk also installs on GrapheneOS and other ROMs that ship the AOSP TalkBack as a system app named `com.android.talkback`.
+Backtalk installs as `fyi.quin.backtalk`, and Backtalk Remote as `com.madgamer.backtalkremote`, so neither replaces Google's TalkBack, nor each other. The two apps have separate settings. Because its app ID is its own, Backtalk also installs on GrapheneOS and other ROMs that ship the AOSP TalkBack as a system app named `com.android.talkback`.
 
 ### Moving from the old app ID
 
@@ -89,7 +95,7 @@ To make the switch fully automatic, grant the new app permission to change secur
 
 ## Updates
 
-Each change to Backtalk is built on GitHub as a development build, on the [dev release](https://github.com/trypsynth/backtalk/releases/tag/dev) page. `backtalk.apk` is for phones and `backtalk-wear.apk` is for Wear OS watches, and each checks for updates of its own kind. The [latest release](https://github.com/trypsynth/backtalk/releases/tag/latest) holds the last build with the old app ID, which moves old installs to the new one. Backtalk checks for a new build when it starts and about once a day. When there is one, it shows a notification with the list of changes. Tap the notification to download and install the new build. The first time, Android asks you to allow Backtalk to install apps.
+Each change to Backtalk is built on GitHub as a development build, on the [dev release](https://github.com/trypsynth/backtalk/releases/tag/dev) page. Backtalk Remote's builds are on its own [dev release](https://github.com/mad-gamer26/BacktalkRemote/releases/tag/dev) page, which Backtalk Remote checks for updates. `backtalk.apk` is for phones and `backtalk-wear.apk` is for Wear OS watches, and each checks for updates of its own kind. The [latest release](https://github.com/trypsynth/backtalk/releases/tag/latest) holds the last build with the old app ID, which moves old installs to the new one. Backtalk checks for a new build when it starts and about once a day. When there is one, it shows a notification with the list of changes. Tap the notification to download and install the new build. The first time, Android asks you to allow Backtalk to install apps.
 
 To check now, go to **Check for updates** in Backtalk settings. To stop the daily checks, turn off **Automatically check for updates**.
 
