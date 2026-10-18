@@ -107,4 +107,21 @@ xcodebuild -project BacktalkRemote.xcodeproj -scheme BacktalkRemote \
 
 To run on an iPhone, add `DEVELOPMENT_TEAM=<your team> -allowProvisioningUpdates`.
 
+## Releases
+
+Backtalk Remote is published on GitHub. Each push to `master` updates the `dev` pre-release; a tag such as `v1.0.1` updates the `stable` release. Builds from either follow their own release for updates (`-PupdateChannel=stable` for release builds; `dev` is the default). Both are signed with Backtalk Remote's release key, which the repository holds as the secrets `BACKTALK_REMOTE_KEYSTORE_BASE64`, `BACKTALK_REMOTE_KEYSTORE_PASSWORD`, `BACKTALK_REMOTE_KEY_ALIAS` and `BACKTALK_REMOTE_KEY_PASSWORD`. Android only installs an update signed with the same key, so the key must never change or be lost. Without it (a fork, a pull request), builds are signed with a debug key.
+
+To make a release, tag the commit and push the tag:
+
+```sh
+git tag v1.0.1
+git push origin v1.0.1
+```
+
+To sign a build on your own computer, add `keystore.file`, `keystore.password`, `key.alias` and `key.password` to `local.properties`.
+
+The iPhone app is not published yet; build it as above.
+
+## Testing
+
 `cargo test` in `remote/` tests the protocol, the relay, keys and sealing, the reclock, and a phone and a controlling device through a relay on the same computer, audio included. `remote-probe` (`cargo run --release --bin remote-probe -- --server mad-gamer.com --key KEY`) is a controlling device without a screen for testing: it sends scripted gestures to a phone and records its audio.
