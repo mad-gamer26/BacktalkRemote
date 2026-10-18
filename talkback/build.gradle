@@ -48,6 +48,10 @@ android {
         // Used by the updater to compare this build with the latest development build.
         buildConfigField("String", "COMMIT_HASH", '"' + rootProject.gitCommitHash + '"')
         buildConfigField("int", "COMMIT_COUNT", String.valueOf(rootProject.gitCommitCount))
+        // The GitHub release the updater follows: "dev" for development builds, "stable" for
+        // releases (./gradlew -PupdateChannel=stable ...).
+        buildConfigField("String", "UPDATE_CHANNEL",
+                '"' + (project.findProperty('updateChannel') ?: 'dev') + '"')
     }
     // Robolectric tests read the module's strings.
     testOptions.unitTests.includeAndroidResources = true

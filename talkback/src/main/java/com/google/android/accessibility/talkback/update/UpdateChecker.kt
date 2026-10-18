@@ -63,6 +63,9 @@ object UpdateChecker {
   /** The pre-release for the app ID fyi.quin.backtalk. */
   const val NEW_CHANNEL = "dev"
 
+  /** Backtalk Remote's releases, which builds made for release follow instead of "dev". */
+  const val STABLE_CHANNEL = "stable"
+
   /** The phone build, which is also what builds before the watch build was published look for. */
   @VisibleForTesting const val PHONE_APK_NAME = "backtalk.apk"
   /** The watch build, so that a watch never installs the phone app. */
@@ -88,7 +91,8 @@ object UpdateChecker {
         }
         OLD_CHANNEL
       } else {
-        NEW_CHANNEL
+        // The channel the build was made for: development builds follow "dev", releases "stable".
+        BuildConfig.UPDATE_CHANNEL
       }
     val json = fetchRelease(context, channel) ?: throw IOException("GitHub has no $channel release")
     return parseRelease(json, BuildConfig.COMMIT_COUNT, BuildConfig.COMMIT_HASH, apkName())

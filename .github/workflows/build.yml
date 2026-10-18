@@ -3,6 +3,8 @@ name: Build
 on:
   push:
     branches: [master]
+    # A tag such as v1.0.0 makes a release: the "stable" release, which release builds update from.
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -65,8 +67,35 @@ jobs:
           fi
 
       # AGP downloads the SDK platform and NDK it needs if the runner lacks them.
+      # Backtalk Remote's release key, when the repository has it: then every build, development
+      # and stable, is signed with it, and each updates the others.
+      - name: Install the release key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.BACKTALK_REMOTE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.BACKTALK_REMOTE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.BACKTALK_REMOTE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.BACKTALK_REMOTE_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+            {
+              echo "BACKTALK_REMOTE_KEYSTORE=$RUNNER_TEMP/release.jks"
+              echo "BACKTALK_REMOTE_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+              echo "BACKTALK_REMOTE_KEY_ALIAS=$KEY_ALIAS"
+              echo "BACKTALK_REMOTE_KEY_PASSWORD=$KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+            echo "Signing with the release key."
+          else
+            echo "No release key, so the build uses the debug key."
+          fi
+
       - name: Build debug APKs
-        run: ./gradlew assembleDebug --console=plain
+        run: |
+          channel=dev
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            channel=stable
+          fi
+          ./gradlew assembleDebug -PupdateChannel=$channel --console=plain
 
       # Only the phone flavor: the watch's braille keyboard is a stub, so the braille keyboard's
       # tests don't compile for it, and the rest of the code is shared.
@@ -99,7 +128,7 @@ jobs:
   # com.android.talkback, which moves people on older builds to this one with their settings.
   publish:
     needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -140,15 +169,23 @@ jobs:
             fi
             cp "$apk" "${build#*:}"
           done
-          title="Development build $count ($short)"
-          tag=dev
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            # A release: the "stable" release, which release builds update from.
+            title="Backtalk Remote ${GITHUB_REF_NAME#v} (build $count)"
+            tag=stable
+            kind=--latest
+          else
+            title="Development build $count ($short)"
+            tag=dev
+            kind=--prerelease
+          fi
           if gh release view "$tag" > /dev/null 2>&1; then
             # Update the release in place. Deleting and creating it again counts as a new release,
             # which notifies everyone watching the repository.
             git tag -f "$tag" "$GITHUB_SHA"
             git push -f origin "refs/tags/$tag"
             gh release upload "$tag" backtalk.apk backtalk-wear.apk --clobber
-            gh release edit "$tag" --title "$title" --notes-file release-notes.md --prerelease
+            gh release edit "$tag" --title "$title" --notes-file release-notes.md $kind
           else
-            gh release create "$tag" backtalk.apk backtalk-wear.apk --prerelease --target "$GITHUB_SHA" --title "$title" --notes-file release-notes.md
+            gh release create "$tag" backtalk.apk backtalk-wear.apk $kind --target "$GITHUB_SHA" --title "$title" --notes-file release-notes.md
           fi

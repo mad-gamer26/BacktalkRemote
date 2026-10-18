@@ -12,6 +12,20 @@ apply from: 'version.gradle'
 
 final BUILD_TIMESTAMP = new Date().format('yyyy_MM_dd_HHmm')
 
+// Backtalk Remote's release key, when one is configured: from the environment in CI, or from
+// local.properties (keystore.file, keystore.password, key.alias, key.password) on your own
+// computer. Builds signed with it update each other, development and stable builds alike; without
+// it, builds are signed with the computer's debug key.
+def releaseKeyProperties = new Properties()
+def releaseKeyLocalFile = rootProject.file('local.properties')
+if (releaseKeyLocalFile.exists()) {
+    releaseKeyLocalFile.withInputStream { releaseKeyProperties.load(it) }
+}
+def releaseKey = { String env, String property ->
+    System.getenv(env) ?: releaseKeyProperties.getProperty(property)
+}
+def releaseKeystore = releaseKey('BACKTALK_REMOTE_KEYSTORE', 'keystore.file')
+
 dependencies {
     implementation project(':talkback')
 }
@@ -27,12 +41,25 @@ android {
         testInstrumentationRunner = 'android.test.InstrumentationTestRunner'
         multiDexEnabled = true
     }
+    signingConfigs {
+        if (releaseKeystore) {
+            backtalkRemote {
+                storeFile = file(releaseKeystore)
+                storePassword = releaseKey('BACKTALK_REMOTE_KEYSTORE_PASSWORD', 'keystore.password')
+                keyAlias = releaseKey('BACKTALK_REMOTE_KEY_ALIAS', 'key.alias')
+                keyPassword = releaseKey('BACKTALK_REMOTE_KEY_PASSWORD', 'key.password')
+            }
+        }
+    }
     buildTypes {
         // The published builds are debug builds, signed with the debug key. Android runs a
         // debuggable app without compiling it, which makes navigation several times slower on
         // a watch, so they are not debuggable. Debug logging in the libraries stays on.
         debug {
             debuggable = false
+            if (releaseKeystore) {
+                signingConfig = signingConfigs.backtalkRemote
+            }
         }
     }
     packaging {
