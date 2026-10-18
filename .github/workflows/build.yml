@@ -42,6 +42,10 @@ jobs:
       - name: Install cargo-ndk
         run: cargo install cargo-ndk --locked
 
+      # The core's tests build it for Linux too, where cpal's audio backend needs ALSA's headers.
+      - name: Install ALSA headers
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev pkg-config
+
       # The protocol, the relay, keys and sealing, the reclock, and a phone and a controlling device
       # through a relay on the runner, audio included.
       - name: Test remote access
