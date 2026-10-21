@@ -46,6 +46,9 @@ data class SoundTheme(val id: String, val manifest: SoundThemeManifest, val dire
     get() = id == SoundThemes.BACKTALK
 }
 
+/** Thrown when a new theme's name gives the folder of an installed theme. */
+class ThemeExistsException(val id: String) : Exception("A theme called $id exists")
+
 /** A theme unpacked from a theme file, waiting for the person to install it or not. */
 data class StagedTheme(
   val id: String,
@@ -345,6 +348,60 @@ object SoundThemes {
     if (id == BACKTALK) return
     if (activeId(prefs) == id) activate(context, prefs, BACKTALK, saveCurrent = false)
     File(themesDirectory(context), id).deleteRecursively()
+  }
+
+  /**
+   * Creates an empty theme and returns its id. Throws [ThemeExistsException] if one with the same
+   * folder name is installed, and [IllegalArgumentException] for a blank name.
+   */
+  @JvmStatic
+  fun create(
+    context: Context,
+    name: String,
+    description: String,
+    author: String,
+    controlSounds: Boolean,
+    audio3d: String,
+  ): String {
+    val trimmed = name.trim()
+    require(trimmed.isNotEmpty()) { "A theme needs a name" }
+    val id = idFor(trimmed)
+    val directory = File(themesDirectory(context), id)
+    if (directory.exists()) throw ThemeExistsException(id)
+    val manifest =
+      SoundThemeManifest(
+        name = trimmed,
+        author = author.trim().ifEmpty { null },
+        description = description.trim().ifEmpty { null },
+        controlSounds = controlSounds,
+        audio3d = audio3d,
+      )
+    write(SoundTheme(id, manifest, directory))
+    return id
+  }
+
+  /**
+   * Saves control sounds and 3D audio to the theme [id], which need not be the one in use. For the
+   * one in use they also reach the preferences.
+   */
+  @JvmStatic
+  fun setSettings(
+    context: Context,
+    prefs: SharedPreferences,
+    id: String,
+    controlSounds: Boolean,
+    audio3d: String,
+  ) {
+    val theme = theme(context, id) ?: return
+    write(theme.copy(manifest = theme.manifest.copy(controlSounds = controlSounds, audio3d = audio3d)))
+    if (id == activeId(prefs)) {
+      prefs
+        .edit()
+        .putBoolean(ControlSoundsSettings.PREF_ON, controlSounds)
+        .putString(ControlSoundsSettings.PREF_3D, audio3d)
+        .putLong(PREF_CHANGED, System.currentTimeMillis())
+        .apply()
+    }
   }
 
   // ---------------------------------------------------------------------------------------------
