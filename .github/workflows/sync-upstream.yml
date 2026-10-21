@@ -1,0 +1,112 @@
+name: Sync upstream
+
+# Merges new commits from upstream Backtalk into master, keeping Backtalk Remote's own changes, and
+# makes a Backtalk Remote release when upstream publishes a Backtalk release.
+#
+# GitHub can't start a workflow here when something happens in another repository, so this checks
+# upstream on a schedule instead.
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  UPSTREAM: trypsynth/backtalk
+  UPSTREAM_BRANCH: master
+  # Upstream releases published before this workflow was added are left alone, so the first run
+  # doesn't tag every old release at once.
+  RELEASES_SINCE: '2026-10-21T00:00:00Z'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      # The push has to use a personal access token rather than the workflow's own token, for two
+      # reasons: a push with the workflow's token doesn't start build.yml, so no development build
+      # would be published, and the workflow's token can't push a merge that changes upstream's
+      # files under .github/workflows. The token needs Contents and Workflows read and write access
+      # to this repository.
+      - name: Check for the sync token
+        env:
+          SYNC_TOKEN: ${{ secrets.SYNC_TOKEN }}
+        run: |
+          if [ -z "$SYNC_TOKEN" ]; then
+            echo "::error::The SYNC_TOKEN secret is not set. See the comment in sync-upstream.yml."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+        with:
+          ref: master
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_TOKEN }}
+
+      - name: Merge upstream Backtalk
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git remote add upstream "https://github.com/$UPSTREAM.git"
+          git fetch --no-tags upstream "$UPSTREAM_BRANCH"
+          if git merge-base --is-ancestor "upstream/$UPSTREAM_BRANCH" HEAD; then
+            echo "Already up to date with upstream."
+            exit 0
+          fi
+          # A merge rather than a rebase, the same as the merges made by hand before this, so
+          # Backtalk Remote's commits stay as they are and nothing is force pushed.
+          if ! git merge --no-ff --no-edit -m "Merge upstream Backtalk" "upstream/$UPSTREAM_BRANCH"; then
+            conflicts=$(git diff --name-only --diff-filter=U)
+            git merge --abort
+            {
+              echo "## Upstream Backtalk needs merging by hand"
+              echo
+              echo "Merging \`$UPSTREAM\` \`$(git rev-parse --short "upstream/$UPSTREAM_BRANCH")\` into master conflicts in:"
+              echo
+              echo "$conflicts" | sed 's/^/- `/; s/$/`/'
+              echo
+              echo "Nothing was pushed. Merge it locally, resolve the conflicts and push; the next run carries on from there."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Merging upstream conflicts in: $(echo $conflicts)"
+            exit 1
+          fi
+          # Fails rather than overwriting if master moved while this ran; the next run tries again.
+          git push origin HEAD:master
+          echo "Merged upstream $(git rev-parse --short "upstream/$UPSTREAM_BRANCH") as $(git rev-parse --short HEAD)." >> "$GITHUB_STEP_SUMMARY"
+
+      # Upstream's "dev" and "latest" pre-releases are left out: the push above already makes
+      # build.yml publish Backtalk Remote's own development build. A full upstream release gets a
+      # matching v tag here, which build.yml turns into the "stable" release.
+      - name: Release when upstream releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          releases=$(gh release list -R "$UPSTREAM" --exclude-drafts --exclude-pre-releases \
+            --json tagName,publishedAt \
+            --jq "sort_by(.publishedAt) | .[] | select(.publishedAt > \"$RELEASES_SINCE\") | .tagName")
+          for tag in $releases; do
+            ours="v${tag#v}"
+            if git rev-parse -q --verify "refs/tags/$ours" > /dev/null; then
+              # Either released by an earlier run, or a Backtalk Remote release of its own already
+              # has that version number.
+              if ! git tag -l --format='%(contents)' "$ours" | grep -qF "from Backtalk $tag"; then
+                echo "::warning::Upstream released $tag, but $ours is already a Backtalk Remote release, so it wasn't released."
+              fi
+              continue
+            fi
+            git fetch --no-tags upstream "refs/tags/$tag:refs/tags/upstream-$tag"
+            if ! git merge-base --is-ancestor "upstream-$tag" HEAD; then
+              echo "::warning::Upstream release $tag isn't merged into master yet, so it wasn't released."
+              continue
+            fi
+            git tag -a "$ours" -m "Backtalk Remote ${ours#v}, from Backtalk $tag" HEAD
+            git push origin "refs/tags/$ours"
+            echo "Tagged $ours for upstream release $tag." >> "$GITHUB_STEP_SUMMARY"
+          done
