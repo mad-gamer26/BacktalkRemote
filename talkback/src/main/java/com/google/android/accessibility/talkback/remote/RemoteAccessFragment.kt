@@ -16,6 +16,7 @@
 
 package com.google.android.accessibility.talkback.remote
 
+import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -71,6 +72,9 @@ class RemoteAccessFragment : TalkbackBaseFragment(), RemoteAccess.Listener {
     super.onPause()
   }
 
+  // Access keys are typed as visible passwords so that the keyboard does not learn them. They are
+  // not sign-ins, which is what the rule is about.
+  @SuppressLint("WearPasswordInput")
   private fun buildScreen() {
     val context = requireContext()
     val screen = preferenceManager.createPreferenceScreen(context)
