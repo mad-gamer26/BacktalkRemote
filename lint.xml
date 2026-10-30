@@ -1,11 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <lint>
     <!--
+      UniFFI's generated Kotlin bindings of the remote access core use java.lang.ref.Cleaner only
+      after checking at runtime that it exists, falling back to JNA's otherwise.
+    -->
+    <issue id="NewApi">
+        <ignore path="**/build/remoteCore/**" />
+    </issue>
+    <!--
       These BackTalk-specific strings are intentionally translated incrementally by the community.
       Czech now provides them, while many of the inherited TalkBack locales do not yet do so.
       Keep MissingTranslation enabled globally and suppress it only for these exact resources.
     -->
     <issue id="MissingTranslation">
+        <!-- Remote access: English for now, like the strings below. -->
+        <ignore regexp="&quot;(remote_|pref_remote_|title_pref_remote_access|notification_channel_remote_access|notification_title_remote_|notification_action_stop_sharing)" />
         <ignore regexp="settings_backup_title" />
         <ignore regexp="settings_backup_export" />
         <ignore regexp="settings_backup_export_summary" />
