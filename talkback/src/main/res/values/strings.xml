@@ -54,12 +54,18 @@
       Description: Distinguishes the system settings from TalkBack's own speech settings. [CHAR LIMIT=NONE]
     -->
     <string name="title_pref_system_tts_settings">System text-to-speech settings</string>
+    <!-- Title of the reading control that moves to the item below or above, leaving out the other items of the same row. [CHAR LIMIT=40] -->
+    <string name="title_selector_vertical_navigation">Vertical navigation</string>
+    <!-- Summary of the Vertical navigation reading control in the reading controls settings. [CHAR LIMIT=NONE] -->
+    <string name="summary_selector_vertical_navigation">Move to the item below or above, past the other items of the row</string>
     <!-- Title for the "switch TTS engine" reading control selector item. [CHAR LIMIT=NONE] -->
     <string name="title_selector_switch_tts_engine">Speech engine</string>
     <!-- Summary for the "switch TTS engine" reading control selector item. [CHAR LIMIT=NONE] -->
     <string name="summary_selector_switch_tts_engine">Switch between installed speech engines</string>
     <!-- Title for the reading control that switches between voice profiles. [CHAR LIMIT=NONE] -->
     <string name="title_selector_voice_profile">Voice profile</string>
+    <!-- Summary for the reading control that switches between voice profiles. [CHAR LIMIT=70] -->
+    <string name="summary_selector_voice_profile">Switch between your saved voice profiles</string>
     <!--
       Title for the screen of voice profiles: sets of speech settings, each with its own speech
       engine, language, voice, volume, rate and pitch, that the user can switch between. [CHAR LIMIT=NONE]
@@ -206,6 +212,10 @@
     Description: This is presented to the user. [CHAR_LIMIT=70]
     -->
   <string name="actions">Actions</string>
+  <!-- Summary of a settings category heading whose settings are hidden until it is activated. [CHAR LIMIT=30] -->
+  <string name="category_collapsed">Collapsed</string>
+  <!-- Summary of a settings category heading whose settings are shown. [CHAR LIMIT=30] -->
+  <string name="category_expanded">Expanded</string>
     <!--
       Source: Title for the menu item that opens the dialog with system actions available on device
       Description: This is presented to the user. [CHAR LIMIT=NONE]
@@ -245,17 +255,7 @@
       Description: This is spoken to the user. [CHAR LIMIT=NONE]
      -->
     <string name="notification_type_status_stopped">Stopped</string>
-    <!--
-      Source: A notification for a something connected such as power.
-      Description: This is spoken to the user. [CHAR LIMIT=NONE]
-     -->
-    <string name="notification_type_status_connected">connected</string>
 
-    <!--
-      Source: A notification for unknown battery level.
-      Description: This is spoken to the user. [CHAR LIMIT=NONE]
-     -->
-    <string name="notification_battery_level_unknown">unknown</string>
     <!--
       Source: A notification for battery saver mode.
       Description: This is spoken to the user. [CHAR LIMIT=NONE]
@@ -295,7 +295,6 @@
     <string name="template_battery_level_unknown">Battery level unknown</string>
     <!-- Spoken before the battery level while the device is plugged in to charge. [CHAR LIMIT=NONE] -->
     <string name="value_charger_connected">Charger connected</string>
-    <string name="template_battery_state">Power <xliff:g id="charging_status" example="connected">%1$s</xliff:g> <xliff:g id="battery_level" example="73">%2$s</xliff:g> percent <xliff:g id="battery_saver_mode_status" example="Battery saver on">%3$s</xliff:g></string>
 
   <!-- Template for language options menu item-->
   <string name="template_language_options_menu_item"><xliff:g id="language">%1$s</xliff:g> (<xliff:g id="country">%2$s</xliff:g>)</string>
@@ -344,6 +343,10 @@
     <string name="title_pref_say_device_unlocked">Say \"Device unlocked\"</string>
     <!-- Switch to say the time when the screen turns on. [CHAR LIMIT=NONE] -->
     <string name="title_pref_announce_time">Time</string>
+    <!-- Switch below the screen-on time and status choices; suppresses extra automatic lock-screen speech. [CHAR LIMIT=NONE] -->
+    <string name="title_pref_suppress_extra_screen_on_speech">Say only the items above</string>
+    <!-- Summary for limiting automatic lock-screen wake speech to the time and status choices above this switch. [CHAR LIMIT=NONE] -->
+    <string name="summary_pref_suppress_extra_screen_on_speech">When the lock screen turns on, announce only the selected items.</string>
     <!-- Switch to say the ringer mode. [CHAR LIMIT=NONE] -->
     <string name="title_pref_announce_ringer_mode">Ringer mode</string>
     <!-- [CHAR LIMIT=NONE] -->
@@ -412,8 +415,6 @@
     <string name="title_pref_speech_control">Let other apps speak</string>
     <!-- Summary of that setting. [CHAR LIMIT=NONE] -->
     <string name="summary_pref_speech_control">Apps that you allow can say text in your Backtalk voice. Nothing is said while the device is locked.</string>
-    <!-- Title of the setting that plays a sound before each thing another app says through Backtalk. [CHAR LIMIT=NONE] -->
-    <string name="title_pref_speech_control_sound">Play a sound before other apps speak</string>
     <!-- Heading of the list of apps that asked to speak through Backtalk. [CHAR LIMIT=NONE] -->
     <string name="speech_control_apps_category">Apps</string>
     <!-- Shown in that list before any app has asked to speak. [CHAR LIMIT=NONE] -->
@@ -597,24 +598,12 @@
      -->
     <string name="summary_speak_container_element_positions">Say when you enter or leave lists, grids, and other containers</string>
 
-    <!-- Title of dialog to confirm the Focus delay reading control items being added. [CHAR LIMIT=NONE] -->
-    <string name="confirm_focus_delay_reading_control_added_dialog_title">Focus delay added to reading control</string>
-    <!-- Message of dialog to confirm the Focus delay reading control items being added. [CHAR LIMIT=NONE] -->
-    <string name="confirm_focus_delay_reading_control_added_dialog_message">You can now change the focus delay at any time with the reading controls.</string>
-
     <!-- Title of dialog to confirm the typing focus delay reduction which enables the Lift-to-type to do the CLICK. [CHAR LIMIT=NONE] -->
     <string name="confirm_the_typing_focus_delay_reduction_dialog_title">Switch to lift-to-type?</string>
     <!-- Description what the side effect would be when focus delay decreased, and TalkBack would enable the Lift-to-type. [CHAR LIMIT=NONE] -->
     <string name="message_of_typing_focus_delay_reduction_confirm_dialog">When typing focus delay is set below 0.3 seconds, double-tap to type will be very difficult to perform. Choose \"Switch\" to automatically switch to lift to type.\n\nTo use lift-to-type, hold your finger to select any key, then lift for typing.\n\nYou can customize this in Backtalk settings.</string>
-    <!-- Title of dialog to confirm the typing focus delay reading control items being added. [CHAR LIMIT=NONE] -->
-    <string name="confirm_typing_focus_delay_reading_control_added_dialog_title">Typing focus delay added to reading control</string>
-    <!-- Message of dialog to confirm the Focus delay reading control items being added. [CHAR LIMIT=NONE] -->
-    <string name="confirm_typing_focus_delay_reading_control_added_dialog_message">If double-tap is unreliable while you type, you can change to a longer typing focus delay at any time with the reading controls.</string>
     <!-- A warning message to tell the situation user cannot change typing focus delay. [CHAR LIMIT=NONE] -->
     <string name="gestures_announce_typing_focus_wont_change">Typing focus delay is not functioning without Lift-to-type.</string>
-
-    <!-- Latency setting by reading control added positive button. Click the button to acknowledge the action. [CHAR LIMIT=40] -->
-    <string name="confirm_latency_reduction_reading_control_added_dialog_positive_button">Got it</string>
 
     <!-- Reset latency reduction settings. [CHAR LIMIT=NONE] -->
     <string name="reset_letency_reduction_settings_dialog_title">Reset delay settings?</string>
@@ -697,11 +686,6 @@
     -->
     <string name="pref_speak_system_window_titles_summary">Speak system and input windows, like when you switch to the status bar, notifications, or another keyboard</string>
 
-    <!--
-      Source: Preference for Explore by touch setting. This setting allows users to touch on-screen content to hear it spoken aloud.
-      Description: The user can check or not check this. [CHAR LIMIT=40]
-    -->
-    <string name="title_pref_explore_by_touch">Explore by touch</string>
     <!-- Category for TalkBack visuyal settings. [CHAR LIMIT=40] -->
     <string name="title_pref_category_visual">Visual</string>
     <!-- Category for gestures, menus or other controls. [CHAR LIMIT=40] -->
@@ -724,6 +708,10 @@
     <string name="title_pref_single_tap">Single-tap to activate</string>
     <!-- Summary sub-text for single-tap activation. When enabled, the user can place accessibility focus on an item and activate it using a single tap, rather than the default double-tap. [CHAR LIMIT=NONE]-->
     <string name="summary_pref_single_tap">Tap once on a focused item to activate. Faster navigation than double-tapping.</string>
+    <!-- Preference for direct click. When enabled, activating the focused item (double-tap, the activation key or a braille display) touches the item on the screen, as a finger would, instead of asking the app to activate it. Some app buttons only react to a real touch. [CHAR LIMIT=NONE]-->
+    <string name="title_pref_direct_click">Direct click</string>
+    <!-- Summary sub-text for direct click. When enabled, activating the focused item touches the item on the screen, as a finger would, instead of asking the app to activate it. Text fields and sliders are still activated the usual way, because a touch would put the cursor or set the value where it lands. [CHAR LIMIT=NONE]-->
+    <string name="summary_pref_direct_click">Double-tap touches the focused item on the screen, like a finger, instead of asking the app to activate it. Helps with buttons that ignore double-tap. Text fields and sliders are still activated the usual way.</string>
     <!-- Label for the button to launch an activity for managing TalkBack's verbosity. [CHAR LIMIT=40] -->
     <string name="pref_verbosity_title">Verbosity</string>
     <!--
@@ -777,10 +765,6 @@
     <string name="title_pref_manage_keyboard_shortcuts">Keyboard shortcuts</string>
     <!-- Label for the button to export custom labels data as a file. [CHAR LIMIT=40] -->
     <string name="title_pref_export_custom_labels">Export custom labels</string>
-    <!-- Label for the button to open the Play Store page. -->
-    <string name="title_pref_play_store">Open Backtalk at the Play Store</string>
-    <!-- Summary sub-text for the button to open the Play Store page. Argument is version number. -->
-    <string name="summary_pref_play_store">Current Backtalk Version: <xliff:g id="version_number">%1$s</xliff:g></string>
     <!-- The preference title of Help & feedback [CHAR_LIMIT=NONE]-->
     <string name="title_pref_help_and_feedback">Help &#38; feedback</string>
     <!-- The preference title of GUP support [CHAR_LIMIT=NONE]-->
@@ -817,6 +801,53 @@
       Description: Explains whether to show the banner. [CHAR LIMIT=NONE]
     -->
     <string name="summary_pref_show_exit_watermark">When Backtalk turns on, show how to turn it off</string>
+    <!-- Title of the switch that makes the Notifications action open Backtalk's own list of notifications instead of the system's notification shade. [CHAR_LIMIT=NONE] -->
+    <string name="title_pref_notification_list">Use Backtalk\'s notification list</string>
+    <!-- Title of the screen that chooses which parts of a notification Backtalk's notification list speaks, and their order. [CHAR_LIMIT=NONE] -->
+    <string name="title_pref_notification_parts">Notification details</string>
+    <!-- A part of a notification that Backtalk's notification list can speak: its title. [CHAR_LIMIT=NONE] -->
+    <string name="notification_part_title">Title</string>
+    <!-- A part of a notification that Backtalk's notification list can speak: its text. [CHAR_LIMIT=NONE] -->
+    <string name="notification_part_text">Text</string>
+    <!-- A part of a notification that Backtalk's notification list can speak: the name of the app that posted it. [CHAR_LIMIT=NONE] -->
+    <string name="notification_part_app">App name</string>
+    <!-- A part of a notification that Backtalk's notification list can speak: when it was posted. [CHAR_LIMIT=NONE] -->
+    <string name="notification_part_time">Time</string>
+    <!-- A part of a media notification that Backtalk's notification list can speak: whether its media is playing or paused. [CHAR_LIMIT=NONE] -->
+    <string name="notification_part_playback">Playing or paused</string>
+    <!-- Title of Backtalk's own list of notifications. [CHAR_LIMIT=NONE] -->
+    <string name="notification_list_title">Notifications</string>
+    <!-- Shown in Backtalk's notification list when there are no notifications. [CHAR_LIMIT=NONE] -->
+    <string name="notification_list_empty">No notifications</string>
+    <!-- Shown in Backtalk's notification list when Backtalk does not have notification access. [CHAR_LIMIT=NONE] -->
+    <string name="notification_list_no_access">Notification access is off</string>
+    <!-- Button that opens the system setting for Backtalk's notification access. [CHAR_LIMIT=NONE] -->
+    <string name="notification_list_grant_access">Turn on notification access</string>
+    <!-- Button in Backtalk's notification list that opens the system's quick settings. [CHAR_LIMIT=NONE] -->
+    <string name="notification_list_quick_settings">Quick settings</string>
+    <!-- Accessibility action that removes a notification from Backtalk's notification list. [CHAR_LIMIT=NONE] -->
+    <string name="notification_list_dismiss">Dismiss</string>
+    <!-- Button in Backtalk's notification list that removes every notification that can be removed. [CHAR_LIMIT=NONE] -->
+    <string name="notification_list_clear_all">Clear all</string>
+    <!-- Button that sends a reply typed in Backtalk's notification list. [CHAR_LIMIT=NONE] -->
+    <string name="notification_list_send">Send</string>
+    <!-- State of a media notification in Backtalk's notification list whose media is playing. [CHAR_LIMIT=NONE] -->
+    <string name="notification_list_playing">Playing</string>
+    <!-- State of a media notification in Backtalk's notification list whose media is paused. [CHAR_LIMIT=NONE] -->
+    <string name="notification_list_paused">Paused</string>
+    <!-- Action on a media notification in Backtalk's notification list that starts playback. [CHAR_LIMIT=NONE] -->
+    <string name="notification_list_play">Play</string>
+    <!-- Action on a media notification in Backtalk's notification list that pauses playback. [CHAR_LIMIT=NONE] -->
+    <string name="notification_list_pause">Pause</string>
+    <!-- Action on a media notification in Backtalk's notification list that skips to the previous item. [CHAR_LIMIT=NONE] -->
+    <string name="notification_list_previous">Previous</string>
+    <!-- Action on a media notification in Backtalk's notification list that skips to the next item. [CHAR_LIMIT=NONE] -->
+    <string name="notification_list_next">Next</string>
+    <!-- Number of notifications in a group in Backtalk's notification list. [CHAR_LIMIT=NONE] -->
+    <plurals name="notification_list_group_count">
+        <item quantity="one">%d notification</item>
+        <item quantity="other">%d notifications</item>
+    </plurals>
     <!-- The text of TalkBack mis-trigger-prevention watermark. [CHAR_LIMIT=NONE]-->
     <string name="talkback_exit_watermark_text">Backtalk on. Hold 2 fingers on screen for 5 seconds to turn off. To stop showing this message, tap with 3 fingers to open the Backtalk menu.</string>
     <!-- The hint text of TalkBack mis-trigger-prevention watermark. [CHAR_LIMIT=NONE]-->
@@ -1071,6 +1102,8 @@
     <string name="keycombo_menu_other_language_options">Show installed languages</string>
     <!-- Keyboard key combination assignment for copying the last spoken phrase. [CHAR LIMIT=60] -->
     <string name="keycombo_menu_other_copy_last_spoken_phrase">Copy last spoken phrase</string>
+    <!-- Keyboard key combination assignment for adding the last spoken phrase to the text on the clipboard. [CHAR LIMIT=60] -->
+    <string name="keycombo_menu_other_append_last_spoken_phrase">Add last spoken phrase to clipboard</string>
     <!-- Keyboard key combination assignment for toggle selection [CHAR LIMIT=40] -->
     <string name="keycombo_menu_other_toggle_selection" translatable="false">@string/shortcut_toggle_selection</string>
     <!-- Keyboard key combination assignment for opening the TTS settings. [CHAR LIMIT=60] -->
@@ -1347,6 +1380,8 @@
       Description: Title of the audio output device setting. [CHAR LIMIT=35]
     -->
     <string name="title_pref_audio_output_device">Audio output device</string>
+    <!-- Summary for the reading control that changes the audio output device. [CHAR LIMIT=70] -->
+    <string name="summary_selector_audio_output_device">Change where Backtalk speaks, like the phone speaker or headphones</string>
     <!--
       Source: Dialog title when choosing the audio output device.
       Description: Dialog title for selecting audio output target. [CHAR LIMIT=45]
@@ -1803,6 +1838,10 @@ Description: Explain that the feature is enabled for all images. [CHAR_LIMIT=NON
     <string name="shortcut_scroll_forward">Scroll forward</string>
     <!-- Label for the shortcut that tries to scroll current view back. [CHAR_LIMIT=40] -->
     <string name="shortcut_scroll_back">Scroll back</string>
+    <!-- Label for the shortcut that scrolls the current list to its start and focuses its first item. [CHAR_LIMIT=40] -->
+    <string name="shortcut_scroll_to_top">Scroll to top</string>
+    <!-- Label for the shortcut that scrolls the current list to its end and focuses its last item. [CHAR_LIMIT=40] -->
+    <string name="shortcut_scroll_to_bottom">Scroll to bottom</string>
     <!-- Label for the shortcut that tries to scroll current view up. [CHAR_LIMIT=40] -->
     <string name="shortcut_scroll_up">Scroll up</string>
     <!-- Label for the shortcut that tries to scroll current view down. [CHAR_LIMIT=40] -->
@@ -1827,6 +1866,8 @@ Description: Explain that the feature is enabled for all images. [CHAR_LIMIT=NON
     <string name="shortcut_overview">Overview</string>
     <!-- Label for the shortcut that opens the notifications shade. [CHAR_LIMIT=40] -->
     <string name="shortcut_notifications">Notifications</string>
+    <!-- Label for the shortcut that opens the system's notification shade, even when the Notifications shortcut opens Backtalk's own notification list. [CHAR_LIMIT=40] -->
+    <string name="shortcut_system_notifications">System notification shade</string>
     <!-- Label for the shortcut that opens the quick settings. [CHAR_LIMIT=50] -->
     <string name="shortcut_quick_settings">Quick Settings</string>
     <!-- Label for the shortcut that opens the custom action menu. [CHAR_LIMIT=40] -->
@@ -1918,10 +1959,20 @@ Description: Explain that the feature is enabled for all images. [CHAR_LIMIT=NON
     <string name="shortcut_voice_input">Start or end voice input</string>
     <!-- Label for the shortcut that plays/pauses or start/stop voice input [CHAR_LIMIT=90]-->
     <string name="shortcut_media_control_or_voice_input">Play or pause media, start or end voice input</string>
-    <!-- Label for the shortcut that turns up the volume. [CHAR_LIMIT=60]-->
-    <string name="shortcut_increase_volume">Increase volume</string>
-    <!-- Label for the shortcut that turns down the volume. [CHAR_LIMIT=60]-->
-    <string name="shortcut_decrease_volume">Decrease volume</string>
+    <!-- Gesture action that stops what is playing in the app playing media. [CHAR_LIMIT=60] -->
+    <string name="shortcut_media_stop">Stop media</string>
+    <!-- Gesture action that skips to the previous track in the app playing media. [CHAR_LIMIT=60] -->
+    <string name="shortcut_media_previous">Previous track</string>
+    <!-- Gesture action that skips to the next track in the app playing media. [CHAR_LIMIT=60] -->
+    <string name="shortcut_media_next">Next track</string>
+    <!-- Gesture action that rewinds what is playing in the app playing media. [CHAR_LIMIT=60] -->
+    <string name="shortcut_media_rewind">Rewind</string>
+    <!-- Gesture action that fast-forwards what is playing in the app playing media. [CHAR_LIMIT=60] -->
+    <string name="shortcut_media_fast_forward">Fast forward</string>
+    <!-- Label for the shortcut that turns up the accessibility volume. [CHAR_LIMIT=60]-->
+    <string name="shortcut_increase_volume">Increase accessibility volume</string>
+    <!-- Label for the shortcut that turns down the accessibility volume. [CHAR_LIMIT=60]-->
+    <string name="shortcut_decrease_volume">Decrease accessibility volume</string>
     <!-- Label for the shortcut that perform all apps action. [CHAR_LIMIT=25]-->
     <string name="shortcut_all_apps">All apps</string>
     <!-- Label for the shortcut that perform switch to braille keyboard action. [CHAR_LIMIT=40]-->
@@ -2036,6 +2087,12 @@ Description: Explain that the feature is enabled for all images. [CHAR_LIMIT=NON
     <string name="title_read_from_top">Read from top</string>
     <!-- Label for the menu item that lets the user copies the last spoken phrase. [CHAR_LIMIT=130] -->
     <string name="title_copy_last_spoken_phrase">Copy last spoken phrase</string>
+    <!-- Backtalk menu item and gesture action that adds the last phrase Backtalk said to the text it copied, on a new line, so that several phrases can be copied together. [CHAR LIMIT=NONE] -->
+    <string name="title_append_last_spoken_phrase">Add last spoken phrase to clipboard</string>
+    <!-- Edit options menu item that deletes all the text in the focused text field. [CHAR LIMIT=40] -->
+    <string name="title_edittext_clear">Clear text</string>
+    <!-- Spoken when the text in a text field could not be cleared. [CHAR LIMIT=NONE] -->
+    <string name="cannot_clear_feedback">Can\'t clear the text</string>
     <!-- Label for the menu item that lets the user spells the last spoken phrase. [CHAR_LIMIT=130] -->
     <string name="title_spell_last_spoken_phrase">Spell last spoken phrase</string>
     <!-- Label for the menu item that lets the user repeats the last spoken phrase. [CHAR_LIMIT=130] -->
@@ -2110,6 +2167,8 @@ Description: Explain that the feature is enabled for all images. [CHAR_LIMIT=NON
     <!-- Summary for the menu item that lets the user change the read from cursor position. [CHAR_LIMIT=NONE] -->
     <string name="summary_read_from_current">Starting from the focused item, read all items on the screen</string>
     <!-- Summary for the menu item that lets the user copies the last spoken phrase. [CHAR_LIMIT=NONE] -->
+    <!-- Summary of the setting that shows Add last spoken phrase to clipboard in the Backtalk menu. [CHAR LIMIT=NONE] -->
+    <string name="summary_append_last_spoken_phrase">Add the last phrase Backtalk said to the text you copied, on a new line, to copy several phrases together</string>
     <string name="summary_copy_last_spoken_phrase">Copy the last phrase Backtalk said to the clipboard so you can paste the text</string>
     <!-- Summary for the menu item that lets the user spells the last spoken phrase. [CHAR_LIMIT=NONE] -->
     <string name="summary_spell_last_spoken_phrase">Spell each letter of the last phrase that Backtalk said</string>
@@ -2139,6 +2198,8 @@ Description: Explain that the feature is enabled for all images. [CHAR_LIMIT=NON
     <string name="not_selectable">Not selectable</string>
     <!-- Summary for the navigation options menu or quick menu containing actions. [CHAR_LIMIT=190] -->
     <string name="summary_actions">Perform actions</string>
+    <!-- Summary for the navigation options menu or quick menu containing media controls. [CHAR_LIMIT=190] -->
+    <string name="summary_media_controls">Control media playback</string>
     <!-- Summary for the navigation options menu or quick menu containing spell check. [CHAR_LIMIT=100] -->
     <string name="summary_spell_check">Jump between spelling and grammar suggestions</string>
     <!-- Summary for the navigation options menu or quick menu containing characters. [CHAR_LIMIT=190] -->
@@ -2227,6 +2288,8 @@ Description: Explain that the feature is enabled for all images. [CHAR_LIMIT=NON
     <string name="summary_support_scroll_seq">Scroll forward or backward</string>
     <!-- Summary for the quick menu containing Accessibility volume change. [CHAR_LIMIT=70] -->
     <string name="summary_support_change_a11y_volume">Increase or decrease accessibility volume</string>
+    <!-- Summary for the quick menu containing media volume change. [CHAR_LIMIT=70] -->
+    <string name="summary_support_change_media_volume">Increase or decrease media volume</string>
     <!-- Title for the quick menu containing screen brightness change. [CHAR_LIMIT=40] -->
     <string name="title_pref_brightness">Brightness</string>
     <!-- Summary for the quick menu containing screen brightness change. [CHAR_LIMIT=70] -->
@@ -2251,8 +2314,6 @@ Description: Explain that the feature is enabled for all images. [CHAR_LIMIT=NON
 
     <!-- Label for the direction of the "swipe down" gesture. For instance, this is used in the tutorial to inform the user of how to perform a specific gesture. [CHAR_LIMIT=40] -->
     <string name="value_direction_down">down</string>
-    <!-- Label for the direction of the "swipe down then right" gesture. For instance, this is used in the tutorial to inform the user of how to perform a specific gesture. [CHAR_LIMIT=40] -->
-    <string name="value_direction_down_and_right">down then right</string>
 
     <!-- Label for the preference that assigns an action to the "swipe up" gesture. [CHAR_LIMIT=40] -->
     <string name="title_pref_shortcut_up">Swipe up</string>
@@ -2505,6 +2566,12 @@ Description: Explain that the feature is enabled for all images. [CHAR_LIMIT=NON
     <string name="title_pref_wrap_around">Wrap around</string>
     <!-- Summary of the wrap around setting. [CHAR LIMIT=NONE]-->
     <string name="summary_pref_wrap_around">Swiping past the last item goes to the first, and past the first goes to the last. When off, a sound plays at the end instead.</string>
+    <!-- Title of the switch that makes touching the screen stop speech. When off, speech goes on until touch focuses an item. [CHAR LIMIT=NONE] -->
+    <string name="title_pref_touch_stops_speech">Stop speech when touching the screen</string>
+    <!-- Title of the switch that removes Links and Controls from the reading controls when the focused item is not in web content. [CHAR LIMIT=NONE] -->
+    <string name="title_pref_selector_links_controls_web_only">Links and Controls only in web content</string>
+    <!-- Summary for the setting that limits Links and Controls to web content. [CHAR LIMIT=70] -->
+    <string name="summary_selector_links_controls_web_only">Limit the Links and Controls settings to web content</string>
     <!-- Title of the switch that moves accessibility focus into a window when it opens or comes back, such as when an app opens or you go back. [CHAR LIMIT=NONE] -->
     <string name="title_pref_focus_new_windows">Move focus to new windows</string>
     <!-- Title of the switch that makes the volume keys adjust the focused slider instead of the volume. [CHAR LIMIT=NONE] -->
@@ -2703,10 +2770,6 @@ Description: Explain that the feature is enabled for all images. [CHAR_LIMIT=NON
     <!-- Label for the "enable all" button in TalkbackDumpA11yEventActivity. Clicking on the button will toggle all the switches to "on" in DumpA11yEvent preference setting. -->
     <string name="button_enable_all_events">Enable all</string>
 
-    <!-- Title for the dialog shown when a user attempts to disable Explore by Touch.  -->
-    <string name="dialog_title_disable_exploration">Disable Explore by touch?</string>
-    <!-- Message for the dialog shown when a user attempts to disable Explore by Touch. -->
-    <string name="dialog_message_disable_exploration">Are you sure you want to turn off Explore by touch?\n\nYour device will no longer respond to shortcut gestures or speak items when you touch the screen.</string>
     <!-- Title for the dialog shown when a user attempts to enable node tree debugging.  -->
     <string name="dialog_title_enable_tree_debug">Enable Node Tree Debugging?</string>
     <!-- Message for the dialog shown when a user attempts to enable node tree debugging. -->
@@ -2897,6 +2960,11 @@ Description: Explain that the feature is enabled for all images. [CHAR_LIMIT=NON
    -->
   <string name="title_pref_a11y_volume">Accessibility volume</string>
   <!--
+    Source: Title for the preference that allows user to change Media volume.
+    Description: The user can check or not check this. [CHAR LIMIT=30]
+   -->
+  <string name="title_pref_media_volume">Media volume</string>
+  <!--
     Source: Title for the preference that allows user to typing latency.
     Description: The user can check or not check this. In another seekbar preference, the user can adjust the slider to change latency value. [CHAR LIMIT=60]
    -->
@@ -2976,6 +3044,23 @@ Description: Explain that the feature is enabled for all images. [CHAR_LIMIT=NON
     Description: The user can check or not check this. [CHAR LIMIT=81]
    -->
   <string name="title_pref_selector_actions">Actions</string>
+  <!--
+    Source: Title for the preference that allows user to control media playback.
+    Description: The user can check or not check this. [CHAR LIMIT=30]
+   -->
+  <string name="title_pref_media_controls">Media controls</string>
+  <!-- Action in the Media controls reading control that skips to the previous item. [CHAR_LIMIT=30] -->
+  <string name="media_action_previous">Previous track</string>
+  <!-- Action in the Media controls reading control that rewinds the current item. [CHAR_LIMIT=30] -->
+  <string name="media_action_rewind">Rewind</string>
+  <!-- Action in the Media controls reading control that plays or pauses the current item. [CHAR_LIMIT=30] -->
+  <string name="media_action_play_pause">Play/pause</string>
+  <!-- Action in the Media controls reading control that stops the current item. [CHAR_LIMIT=30] -->
+  <string name="media_action_stop">Stop</string>
+  <!-- Action in the Media controls reading control that fast-forwards the current item. [CHAR_LIMIT=30] -->
+  <string name="media_action_fast_forward">Fast forward</string>
+  <!-- Action in the Media controls reading control that skips to the next item. [CHAR_LIMIT=30] -->
+  <string name="media_action_next">Next track</string>
   <!--
   Source: Title for Cache keyboard keys for announcement setting.
   Description: The user can switch it. [CHAR+LIMIT="NONE"]
@@ -3115,10 +3200,6 @@ Description: Explain that the feature is enabled for all images. [CHAR_LIMIT=NON
   <string name="reading_control_toggle_prefix_xr">Secondary palm in, long press to toggle reading control mode. </string>
   <!-- One or two gesture name. This is spoken to the user. [CHAR_LIMIT=100]-->
   <string name="gesture_1_or_2"><xliff:g example="swipe up">%1$s</xliff:g> or <xliff:g example="swipe down">%2$s</xliff:g></string>
-  <!-- Usage hint for how to select setting. This is spoken to the user. [CHAR_LIMIT=200] -->
-  <string name="select_setting_hint"><xliff:g example="swipe up" id="select_setting_gesture">%1$s</xliff:g> to select a different setting</string>
-  <!-- Usage hint for how to adjust the selected setting. This is spoken to the user. [CHAR_LIMIT=150] -->
-  <string name="adjust_setting_hint"><xliff:g example="swipe up" id="adjust_setting_gesture">%1$s</xliff:g> to adjust the setting</string>
   <!-- Usage hint for how to read the screen (such as reading a single word at a time). This is spoken to the user. [CHAR_LIMIT=180] -->
   <string name="adjust_granularity_hint"><xliff:g example="swipe up" id="adjust_granularity_gesture">%1$s</xliff:g> to read by <xliff:g example="words" id="granularity">%2$s</xliff:g></string>
   <!-- Usage hint for how to navigate to a spelling or grammar error. This is spoken to the user. [CHAR_LIMIT=180] -->
@@ -3846,10 +3927,6 @@ Description: Explain that the feature is enabled for all images. [CHAR_LIMIT=NON
   <string name="wear_training_end_tutorial_title">You\'re ready to start using Backtalk</string>
 
   <!-- TalkBack updated notification -->
-  <!-- The title of notification to notify users TalkBack has been updated. [CHAR_LIMIT=120]-->
-  <string name="talkback_updated_notification_title">Backtalk has been updated</string>
-  <!-- The context of notification to notify users that TalkBack has been updated. [CHAR_LIMIT=150]-->
-  <string name="talkback_updated_notification_content">Tap to find out more</string>
   <!-- The title for the What's new page. [CHAR_LIMIT=150] -->
   <string name="wear_new_feature_page_title">Welcome to the updated Backtalk</string>
   <!-- The content for the What's new page. [CHAR_LIMIT=NONE] -->
@@ -4377,106 +4454,12 @@ Do not use any markdown in your response."</string>
   <!-- Tip notification content for lock screen notifications. [CHAR_LIMIT=NONE] -->
   <string name="notifictions_in_lock_screen_notification_content">To hear notifications when your screen is off, turn on \"Speak notifications when screen is off\" in Backtalk verbosity settings</string>
 
-  <!-- Remote access: settings screen title, and the item that opens it. [CHAR_LIMIT=NONE] -->
-  <string name="title_pref_remote_access">Remote access</string>
-  <!-- Remote access: heading of the settings for letting other devices control this phone. [CHAR_LIMIT=NONE] -->
-  <string name="remote_share_category">Share this phone</string>
-  <!-- Remote access: switch that lets devices with the access key control this phone. [CHAR_LIMIT=NONE] -->
-  <string name="pref_remote_share">Allow remote control</string>
-  <!-- Remote access: summary of the switch. [CHAR_LIMIT=NONE] -->
-  <string name="pref_remote_share_summary">A device with this phone\'s access key can control it through the relay server and hear Backtalk</string>
-  <!-- Remote access: this phone's access key, which controlling devices enter. [CHAR_LIMIT=NONE] -->
-  <string name="pref_remote_share_key">Access key</string>
-  <!-- Remote access: makes a new random access key. [CHAR_LIMIT=NONE] -->
-  <string name="pref_remote_new_key">Make a new access key</string>
-  <!-- Remote access: summary of the new key action. [CHAR_LIMIT=NONE] -->
-  <string name="pref_remote_new_key_summary">Devices using the old key can no longer connect</string>
-  <!-- Remote access: copies the access key to the clipboard. [CHAR_LIMIT=NONE] -->
-  <string name="pref_remote_copy_key">Copy access key</string>
-  <!-- Remote access: shares the access key with another app. [CHAR_LIMIT=NONE] -->
-  <string name="pref_remote_share_key_with">Send access key</string>
-  <!-- Remote access: switch for playing Backtalk on this phone while it is controlled. [CHAR_LIMIT=NONE] -->
-  <string name="pref_remote_play_here">Play Backtalk on this phone while controlled</string>
-  <!-- Remote access: summary of the play switch. [CHAR_LIMIT=NONE] -->
-  <string name="pref_remote_play_here_summary">When off, only the controlling device hears Backtalk</string>
-  <!-- Remote access: the relay server setting. [CHAR_LIMIT=NONE] -->
-  <string name="pref_remote_server">Relay server</string>
-  <!-- Remote access: heading of the settings for controlling another phone. [CHAR_LIMIT=NONE] -->
-  <string name="remote_control_category">Control another phone</string>
-  <!-- Remote access: the access key of the phone to control. [CHAR_LIMIT=NONE] -->
-  <string name="pref_remote_control_key">Access key of the other phone</string>
-  <!-- Remote access: starts controlling another phone. [CHAR_LIMIT=NONE] -->
-  <string name="pref_remote_start_control">Start controlling</string>
-  <!-- Remote access: summary of start controlling. [CHAR_LIMIT=NONE] -->
-  <string name="pref_remote_start_control_summary">While connected, this screen controls the other phone. To stop, press volume down three times quickly.</string>
-  <!-- Remote access: stops controlling another phone. [CHAR_LIMIT=NONE] -->
-  <string name="pref_remote_stop_control">Stop controlling</string>
-  <!-- Remote access: heading of the status. [CHAR_LIMIT=NONE] -->
-  <string name="pref_remote_status">Status</string>
-  <!-- Remote access: shows the audio stream's details. [CHAR_LIMIT=NONE] -->
-  <string name="pref_remote_audio_details">Audio connection details</string>
-  <!-- Remote access: the key was copied. [CHAR_LIMIT=NONE] -->
-  <string name="remote_key_copied">Access key copied</string>
-  <!-- Remote access: no key entered or saved. [CHAR_LIMIT=NONE] -->
-  <string name="remote_not_set">Not set</string>
-  <!-- Remote access: subject of the message that sends the access key. [CHAR_LIMIT=NONE] -->
-  <string name="remote_share_key_subject">Backtalk Remote access key</string>
-  <!-- Remote access: sharing needs Android 11. [CHAR_LIMIT=NONE] -->
-  <string name="remote_share_needs_android_11">Sharing this phone needs Android 11 or later</string>
-  <!-- Remote access: controlling needs Android 13. [CHAR_LIMIT=NONE] -->
-  <string name="remote_control_needs_android_13">Controlling another phone needs Android 13 or later</string>
-  <!-- Remote access: the native part is missing from this build. [CHAR_LIMIT=NONE] -->
-  <string name="remote_not_in_build">Remote access is not in this build of Backtalk</string>
-  <!-- Remote access: Backtalk is off. [CHAR_LIMIT=NONE] -->
-  <string name="remote_backtalk_off">Turn on Backtalk to use remote access</string>
-  <!-- Remote access: controlling needs Backtalk's own gesture handling. [CHAR_LIMIT=NONE] -->
-  <string name="remote_needs_gesture_handling">To control another phone, turn on Handle gestures in Backtalk in advanced settings</string>
-
-  <!-- Remote access status, sharing: connecting to the relay. [CHAR_LIMIT=NONE] -->
-  <string name="remote_host_connecting">Connecting to the relay server</string>
-  <!-- Remote access status, sharing: ready. [CHAR_LIMIT=NONE] -->
-  <string name="remote_host_waiting">Ready. No device is controlling this phone.</string>
-  <!-- Remote access status, sharing: controlled, %1$s lists the devices. [CHAR_LIMIT=NONE] -->
-  <string name="remote_host_controlled">Controlled by %1$s</string>
-  <!-- Remote access status: reconnecting. [CHAR_LIMIT=NONE] -->
-  <string name="remote_reconnecting">Connection lost. Connecting again.</string>
-  <!-- Remote access status: stopped. [CHAR_LIMIT=NONE] -->
-  <string name="remote_off">Off</string>
-  <!-- Remote access status: failed, %1$s says why. [CHAR_LIMIT=NONE] -->
-  <string name="remote_failed">Stopped: %1$s</string>
-  <!-- Remote access: status with a detail, %1$s the status, %2$s the detail. [CHAR_LIMIT=NONE] -->
-  <string name="remote_status_with_detail">%1$s %2$s</string>
-
-  <!-- Remote access status, controlling: no phone with the key. [CHAR_LIMIT=NONE] -->
-  <string name="remote_control_waiting">Waiting for the phone. No phone is sharing with this access key right now.</string>
-  <!-- Remote access status, controlling: connected to %1$s. [CHAR_LIMIT=NONE] -->
-  <string name="remote_control_connected">Controlling %1$s</string>
-  <!-- Remote access status, controlling: no audio yet. [CHAR_LIMIT=NONE] -->
-  <string name="remote_control_audio_waiting">Waiting for audio.</string>
-  <!-- Remote access status, controlling: audio playing. [CHAR_LIMIT=NONE] -->
-  <string name="remote_control_audio_playing">Audio playing.</string>
-
-  <!-- Remote access, spoken: %1$s started controlling this phone. [CHAR_LIMIT=NONE] -->
-  <string name="remote_controller_joined">%1$s is controlling this phone</string>
-  <!-- Remote access, spoken: %1$s stopped controlling this phone. [CHAR_LIMIT=NONE] -->
-  <string name="remote_controller_left">%1$s stopped controlling this phone</string>
-  <!-- Remote access, spoken: now controlling %1$s. [CHAR_LIMIT=NONE] -->
-  <string name="remote_control_started">Controlling %1$s. To stop, press volume down three times.</string>
-  <!-- Remote access, spoken: stopped controlling. [CHAR_LIMIT=NONE] -->
-  <string name="remote_control_stopped">Stopped controlling</string>
-  <!-- Remote access, spoken: sharing turned on and ready. [CHAR_LIMIT=NONE] -->
-  <string name="remote_sharing_ready">This phone can be controlled remotely</string>
-  <!-- Remote access, spoken: no text field has focus for typed text. [CHAR_LIMIT=NONE] -->
-  <string name="remote_type_no_field">No text field to type into</string>
-  <!-- Remote access, spoken: typing failed. [CHAR_LIMIT=NONE] -->
-  <string name="remote_type_failed">Could not type into this field</string>
-
-  <!-- Remote access: notification channel. [CHAR_LIMIT=NONE] -->
-  <string name="notification_channel_remote_access">Remote access</string>
-  <!-- Remote access: notification title while sharing. [CHAR_LIMIT=NONE] -->
-  <string name="notification_title_remote_sharing">Sharing this phone</string>
-  <!-- Remote access: notification title while controlling. [CHAR_LIMIT=NONE] -->
-  <string name="notification_title_remote_controlling">Controlling another phone</string>
-  <!-- Remote access: notification action that stops sharing. [CHAR_LIMIT=NONE] -->
-  <string name="notification_action_stop_sharing">Stop sharing</string>
+  <!-- Title of an Advanced Settings switch. Allows scrolling to the remembered item when returning to a screen. [CHAR LIMIT=NONE] -->
+  <string name="title_pref_scroll_to_restore_previous_focus">Scroll to restore previous focus</string>
+  <!-- Summary of the Advanced Settings switch. Visible items are restored even when this switch is off. [CHAR LIMIT=NONE] -->
+  <string name="summary_pref_scroll_to_restore_previous_focus">Scroll to the last focused item when returning to a screen.</string>
+  <!-- Title of the phone Advanced Settings switch. Opt in to remembering an accessibility element when using Back. [CHAR LIMIT=NONE] -->
+  <string name="title_pref_restore_focus_on_back">Restore focus when going back</string>
+  <!-- Summary of the phone Advanced Settings switch. Back means returning to the previous app screen or browser page. [CHAR LIMIT=NONE] -->
+  <string name="summary_pref_restore_focus_on_back">Return to the last focused item when going back to a screen.</string>
 </resources>

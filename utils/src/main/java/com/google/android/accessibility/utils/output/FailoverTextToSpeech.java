@@ -289,6 +289,37 @@ public class FailoverTextToSpeech {
 
   private final Runnable dropHeldSpeech = this::dropHeldSpeech;
 
+  /**
+   * How long speech waits after a phone call ends for the audio mode to leave the call. Until then,
+   * Android still plays it on the call's output, such as a Bluetooth headset's call audio, which the
+   * headset closes a moment later.
+   */
+  private static final long CALL_END_WAIT_MS = 3_000;
+
+  /** How often the audio mode is checked while speech waits for it. */
+  private static final long CALL_END_POLL_MS = 50;
+
+  /** How long after a phone call was last seen that a call audio mode still belongs to it. */
+  private static final long CALL_SEEN_MS = 10_000;
+
+  /** When a phone call was last seen active, or 0. */
+  private long phoneCallSeenAt;
+
+  /**
+   * A call audio mode that outlasted {@link #CALL_END_WAIT_MS} after a call, so it isn't the ended
+   * call's, and speech no longer waits for it until the mode changes or a call starts. Otherwise
+   * every utterance would wait the full time while a phone keeps that mode.
+   */
+  private int callModeNotWaitedFor = AudioManager.MODE_INVALID;
+
+  /** Speech waiting for the audio mode to leave a phone call that ended, in order. */
+  private final List<Runnable> afterCallSpeech = new ArrayList<>();
+
+  /** When the first speech in {@link #afterCallSpeech} started waiting. */
+  private long afterCallWaitSince;
+
+  private final Runnable speakAfterCall = this::speakAfterCall;
+
   /** The text of recent utterances, by ID, to match a resumed utterance with its held speech. */
   private final Map<String, CharSequence> utteranceTexts = recentMap();
 
@@ -429,8 +460,7 @@ public class FailoverTextToSpeech {
    * A buffer of N most recent utterance ids, used to ensure that a recent utterance's completion
    * handler does not unlock a WakeLock used by the currently speaking utterance.
    */
-  private final Deque<String> recentUtteranceIds =
-      new ConcurrentLinkedDeque<>(); // may contain nulls
+  private final Deque<String> recentUtteranceIds = new ConcurrentLinkedDeque<>();
 
   private final @Nullable SpeechCacheManager speechCacheManager;
 
@@ -620,6 +650,57 @@ public class FailoverTextToSpeech {
       boolean preventDeviceSleep,
       boolean flushGlobalTtsQueue,
       EventId eventId) {
+    if (!TextUtils.isEmpty(text) && (!afterCallSpeech.isEmpty() || callAudioEnding())) {
+      if (afterCallSpeech.isEmpty()) {
+        afterCallWaitSince = SystemClock.uptimeMillis();
+        mHandler.postDelayed(speakAfterCall, CALL_END_POLL_MS);
+      }
+      LogUtils.d(
+          TAG,
+          "Speech %s waits for the ended call's audio",
+          params.get(Engine.KEY_PARAM_UTTERANCE_ID));
+      afterCallSpeech.add(
+          () ->
+              speakNow(
+                  text,
+                  locale,
+                  pitch,
+                  rate,
+                  params,
+                  customFlags,
+                  stream,
+                  volume,
+                  preventDeviceSleep,
+                  flushGlobalTtsQueue,
+                  eventId));
+      return;
+    }
+    speakNow(
+        text,
+        locale,
+        pitch,
+        rate,
+        params,
+        customFlags,
+        stream,
+        volume,
+        preventDeviceSleep,
+        flushGlobalTtsQueue,
+        eventId);
+  }
+
+  private void speakNow(
+      CharSequence text,
+      @Nullable Locale locale,
+      float pitch,
+      float rate,
+      Map<String, String> params,
+      Map<String, Integer> customFlags,
+      int stream,
+      float volume,
+      boolean preventDeviceSleep,
+      boolean flushGlobalTtsQueue,
+      EventId eventId) {
     String utteranceId = params.get(Engine.KEY_PARAM_UTTERANCE_ID);
     addRecentUtteranceId(utteranceId);
 
@@ -671,6 +752,64 @@ public class FailoverTextToSpeech {
 
       mHandler.onUtteranceCompleted(params.get(Engine.KEY_PARAM_UTTERANCE_ID), /* success= */ true);
     }
+  }
+
+  /**
+   * Whether a phone call has ended but the audio mode still belongs to it. The mode is a call's,
+   * and the call is over, and it was a phone call: the mode is a phone call's, or a phone call was
+   * seen shortly before. A voice call in an app has a call mode with no phone call.
+   */
+  private boolean callAudioEnding() {
+    int mode = audioManager.getMode();
+    if (mode != AudioManager.MODE_IN_CALL && mode != AudioManager.MODE_IN_COMMUNICATION) {
+      callModeNotWaitedFor = AudioManager.MODE_INVALID;
+      return false;
+    }
+    int callState;
+    try {
+      callState =
+          telephonyManager == null ? TelephonyManager.CALL_STATE_IDLE : telephonyManager.getCallState();
+    } catch (SecurityException e) {
+      // Without the phone permission, the end of a call can't be told.
+      return false;
+    }
+    long now = SystemClock.uptimeMillis();
+    if (callState != TelephonyManager.CALL_STATE_IDLE) {
+      phoneCallSeenAt = now;
+      callModeNotWaitedFor = AudioManager.MODE_INVALID;
+      return false;
+    }
+    if (mode == callModeNotWaitedFor) {
+      return false;
+    }
+    return mode == AudioManager.MODE_IN_CALL
+        || (phoneCallSeenAt != 0 && now - phoneCallSeenAt < CALL_SEEN_MS);
+  }
+
+  /** Speaks the speech that waited, once the ended call's audio mode is gone or after a while. */
+  private void speakAfterCall() {
+    long waited = SystemClock.uptimeMillis() - afterCallWaitSince;
+    if (inCall() && waited < CALL_END_WAIT_MS) {
+      mHandler.postDelayed(speakAfterCall, CALL_END_POLL_MS);
+      return;
+    }
+    if (inCall()) {
+      // The mode stayed: it isn't the ended call's, so speech doesn't wait for it again.
+      phoneCallSeenAt = 0;
+      callModeNotWaitedFor = audioManager.getMode();
+    }
+    LogUtils.d(TAG, "Speaking %d utterances after %d ms for the ended call's audio", afterCallSpeech.size(), waited);
+    List<Runnable> waiting = new ArrayList<>(afterCallSpeech);
+    afterCallSpeech.clear();
+    for (Runnable speech : waiting) {
+      speech.run();
+    }
+  }
+
+  /** Drops speech waiting for an ended call's audio mode. */
+  private void dropAfterCallSpeech() {
+    afterCallSpeech.clear();
+    mHandler.removeCallbacks(speakAfterCall);
   }
 
   /** Adjust volume if we are in a phone call and speaking with phone audio stream */
@@ -738,6 +877,9 @@ public class FailoverTextToSpeech {
   }
 
   private void addRecentUtteranceId(String utteranceId) {
+    if (utteranceId == null) {
+      return;
+    }
     recentUtteranceIds.add(utteranceId);
     while (recentUtteranceIds.size() > 10) {
       recentUtteranceIds.poll();
@@ -751,6 +893,7 @@ public class FailoverTextToSpeech {
 
   /** Stops speech from all applications. No utterance callbacks will be sent. */
   public void stopAll() {
+    dropAfterCallSpeech();
     dropHeldSpeech();
     stopLowLatencySpeech();
     try {
@@ -758,6 +901,8 @@ public class FailoverTextToSpeech {
       ensureQueueFlush();
       tts.speak("", SPEECH_FLUSH_ALL, null);
       unfinishedUtterances.clear();
+      // No utterance callbacks reach us after a flush-all, so stale chunks must not persist.
+      speechChunks.clear();
     } catch (Exception e) {
       // Don't care, we're not speaking.
     }
@@ -765,6 +910,7 @@ public class FailoverTextToSpeech {
 
   /** Stops all speech that originated from TalkBack. No utterance callbacks will be sent. */
   public void stopFromTalkBack() {
+    dropAfterCallSpeech();
     if (holdLowLatencySpeech()) {
       // The engine keeps making the held speech, so it can carry on if speech is paused.
       allowDeviceSleep();
@@ -1207,31 +1353,41 @@ public class FailoverTextToSpeech {
           } else if (state == SpeechCachePlayer.STATE_READY) {
             utteranceProgressCallback.onAudioCacheAvailable(utteranceId);
           } else if (state == SpeechCachePlayer.STATE_COMPLETED) {
-            // Consume the speeches with queue_MODE_ADD.
-            List<SpeakRequest> suspendQueueCopy = new ArrayList<>(suspendQueue);
-            suspendQueue.clear();
-            for (SpeakRequest speakRequest : suspendQueueCopy) {
-              LogUtils.d(TAG, "consume suspend queue speakRequest= %s: ", speakRequest);
-              mHandler.post(
-                  () -> {
-                    if (isReady()) {
-                      attemptSetLanguage(speakRequest.locale);
-                      ttsSpeak(
-                          speakRequest.text,
-                          speakRequest.queueMode,
-                          speakRequest.bundle,
-                          utteranceId);
-                    }
-                  });
-            }
+            speakSuspendQueue();
             mHandler.onUtteranceCompleted(utteranceId, /* success= */ true);
           } else if (state == SpeechCachePlayer.STATE_STOPPED) {
+            mHandler.onUtteranceCompleted(utteranceId, /* success= */ false);
+          } else if (state == SpeechCachePlayer.STATE_ERROR) {
+            // A cached speech that fails sends no completion either, so the speech queued behind
+            // it has to be spoken now.
+            speakSuspendQueue();
             mHandler.onUtteranceCompleted(utteranceId, /* success= */ false);
           }
         }
       };
 
   private final List<SpeakRequest> suspendQueue = Collections.synchronizedList(new ArrayList<>());
+
+  /** Speaks the speech queued with QUEUE_MODE_ADD while a cached speech played. */
+  private void speakSuspendQueue() {
+    List<SpeakRequest> suspendQueueCopy = new ArrayList<>(suspendQueue);
+    suspendQueue.clear();
+    for (SpeakRequest speakRequest : suspendQueueCopy) {
+      LogUtils.d(TAG, "consume suspend queue speakRequest= %s: ", speakRequest);
+      mHandler.post(
+          () -> {
+            if (isReady()) {
+              attemptSetLanguage(speakRequest.locale);
+              // The queued request's own id: the completing id names the cached speech.
+              ttsSpeak(
+                  speakRequest.text,
+                  speakRequest.queueMode,
+                  speakRequest.bundle,
+                  speakRequest.utteranceId());
+            }
+          });
+    }
+  }
 
   /**
    * Speaks the text with cache if possible, otherwiase fallback to {@link
@@ -1426,7 +1582,15 @@ public class FailoverTextToSpeech {
   private void checkAudioMode() {
     int mode = audioManager.getMode();
     if (mode != lastAudioMode) {
+      boolean callEnded =
+          (lastAudioMode == AudioManager.MODE_IN_CALL
+                  || lastAudioMode == AudioManager.MODE_IN_COMMUNICATION)
+              && mode == AudioManager.MODE_NORMAL;
       lastAudioMode = mode;
+      // From Android 12, the player follows mode changes itself.
+      if (callEnded && android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) {
+        LowLatencyAudio.remakeTracks();
+      }
       audioModeChangedAt = SystemClock.uptimeMillis();
     }
   }
@@ -1444,7 +1608,8 @@ public class FailoverTextToSpeech {
     if ((!lowLatencyAudio && !LowLatencyAudio.isTapped())
         || LowLatencyAudio.isMicrophoneInUse()
         || inCall()
-        || audioModeSettling()
+        // The usual way can't leave the earpiece Android keeps after a call; the player can.
+        || (audioModeSettling() && !LowLatencyAudio.isAvoidingEarpiece())
         || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R
         || (ttsEngine != null && enginesWithoutFileAudio.contains(ttsEngine))) {
       return null;
@@ -1792,8 +1957,12 @@ public class FailoverTextToSpeech {
       return;
     }
     checkAudioMode();
-    if (quiet < ENGINE_BUSY_HANG_MS && audioModeChangedAt >= since) {
-      // The audio mode changed while the engine had the speech, such as when a call started.
+    long modeChangedAt = audioModeChangedAt;
+    if (quiet < ENGINE_BUSY_HANG_MS
+        && modeChangedAt != 0
+        && modeChangedAt >= since - AUDIO_MODE_SETTLE_MS) {
+      // The audio mode changed while the engine had the speech, such as when a call started, or
+      // shortly before.
       mHandler.postDelayed(checkEngineHang, ENGINE_HANG_MS);
       return;
     }
@@ -1816,6 +1985,8 @@ public class FailoverTextToSpeech {
     if (hungUtteranceId != null && !lowLatency) {
       utteranceProgressCallback.onError(hungUtteranceId);
     }
+    // A hung engine never sends the final chunk's callback, so stale chunks must not persist.
+    speechChunks.clear();
   }
 
   /** Speaks the usual way with the current engine from now on. */
@@ -2178,6 +2349,8 @@ public class FailoverTextToSpeech {
     lowLatencyStreams.clear();
     lowLatencyRequests.clear();
     respokenUtterances.clear();
+    // An engine that is gone never completes its chunks, so stale chunks must not persist.
+    speechChunks.clear();
     LowLatencyAudio.stopAllStreams();
     mHandler.removeCallbacks(checkEngineHang);
     engineQuietSince = 0;
@@ -2787,7 +2960,7 @@ public class FailoverTextToSpeech {
     @Override
     public void onStart(String utteranceId) {
       progressEstimator.onStarted(utteranceId, SystemClock.uptimeMillis());
-      if (utteranceId.startsWith(CACHE_UTTERANCE_ID_PREFIX)) {
+      if (utteranceId == null || utteranceId.startsWith(CACHE_UTTERANCE_ID_PREFIX)) {
         return;
       }
       SpeechChunk chunk = toOriginal(utteranceId);

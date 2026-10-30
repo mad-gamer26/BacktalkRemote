@@ -37,7 +37,7 @@ if (localPropertiesFile.exists()) {
     localPropertiesFile.withInputStream { localProperties.load(it) }
 }
 def geminiApiKey = localProperties.getProperty('gemini.api.key', '')
-def geminiModel = localProperties.getProperty('gemini.model', 'gemini-flash-latest')
+def geminiModel = localProperties.getProperty('gemini.model', 'gemini-3.5-flash')
 
 android {
     namespace = "com.google.android.accessibility.talkback"
@@ -52,6 +52,9 @@ android {
         // releases (./gradlew -PupdateChannel=stable ...).
         buildConfigField("String", "UPDATE_CHANNEL",
                 '"' + (project.findProperty('updateChannel') ?: 'dev') + '"')
+        // Whether the APK carries ML Kit's text recognition model, so that it updates to the build
+        // without Google Play services. See the app's build.gradle.
+        buildConfigField("boolean", "BUNDLED_OCR", String.valueOf(project.hasProperty('bundledOcr')))
     }
     // Robolectric tests read the module's strings.
     testOptions.unitTests.includeAndroidResources = true

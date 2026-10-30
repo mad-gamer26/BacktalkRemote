@@ -44,10 +44,16 @@ object GeminiApiKeyPreference {
     }
   }
 
+  /** Shows whether the key is used, after the other AI service is set up or cleared. */
+  fun refresh(fragment: PreferenceFragmentCompat) {
+    fragment.findPreference<Preference>(GeminiApiKey.PREF_KEY)?.let(::updateSummary)
+  }
+
   private fun updateSummary(preference: Preference) {
     val prefs = SharedPreferencesUtils.getSharedPreferences(preference.context)
     preference.setSummary(
       when {
+        AiService.isSetUp(prefs) -> R.string.summary_pref_gemini_api_key_other_service
         GeminiApiKey.userKey(prefs).isNotEmpty() -> R.string.summary_pref_gemini_api_key_set
         BuildConfig.GEMINI_API_KEY.isNotBlank() -> R.string.summary_pref_gemini_api_key_built_in
         else -> R.string.summary_pref_gemini_api_key_not_set
@@ -66,6 +72,8 @@ object GeminiApiKeyPreference {
         isSingleLine = true
         setHint(R.string.gemini_api_key_hint)
         setText(GeminiApiKey.userKey(prefs))
+        // Android offers Paste only for a field with input focus.
+        post { requestFocus() }
       }
     // Lines the field up with the dialog's message.
     val padding = (24 * context.resources.displayMetrics.density).toInt()

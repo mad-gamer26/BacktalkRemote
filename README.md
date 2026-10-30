@@ -26,6 +26,10 @@ The emoji names are from the [Unicode CLDR](https://cldr.unicode.org/) and the U
 
 Scripts run in [QuickJS-NG](https://github.com/quickjs-ng/quickjs), copyright Fabrice Bellard, Charlie Gordon, Ben Noordhuis and Saúl Ibarra Corretgé, used under the MIT License, which is in `scripting/quickjs/src/main/assets/quickjs/LICENSE`. The build downloads its source, pinned by version and checksum in `scripting/quickjs/src/main/cpp/CMakeLists.txt`.
 
+## Contributing
+
+Before you open a pull request, please read [Contributing to Backtalk](CONTRIBUTING.md).
+
 ## Build
 
 You need JDK 17 or newer, the Android SDK with platform 37, and NDK 27.3.13750724. The Gradle wrapper downloads the correct Gradle version, so you do not need to install Gradle. Backtalk Remote also needs Rust, with the Android targets and `cargo-ndk`, for its remote access core: see [Building](docs/remote-access.md#building).
@@ -56,7 +60,7 @@ Google's source release does not include the Gemini settings, so **Describe imag
 
 To remove the key, clear the field and save.
 
-If you build Backtalk yourself, you can also build a key into the APK instead. Add `gemini.api.key=YOUR_KEY` to `local.properties` in the project folder, then build and install Backtalk again. A key entered in settings takes the place of the built-in key. Git ignores `local.properties`, so your key is not committed, but do not share an APK that contains your key. To use a different model, add `gemini.model=MODEL_NAME`. The default is `gemini-flash-latest`.
+If you build Backtalk yourself, you can also build a key into the APK instead. Add `gemini.api.key=YOUR_KEY` to `local.properties` in the project folder, then build and install Backtalk again. A key entered in settings takes the place of the built-in key. Git ignores `local.properties`, so your key is not committed, but do not share an APK that contains your key. To build in a different model, add `gemini.model=MODEL_NAME`. The default is `gemini-3.5-flash`. You can also change the model without building, in **Automatic descriptions** > **Gemini model**.
 
 Images and screenshots that you describe are sent to Google. On the free tier, Google can use this data to improve its products.
 
@@ -77,6 +81,8 @@ Answers take several seconds and use battery, more than the cloud on a mid-range
 
 Install the APK on your device with adb.
 
+To build the phone APK for phones without Google Play services, add `-PbundledOcr` to the Gradle command.
+
 On Windows, `.\deploy.ps1` builds the APK and installs it with adb. This script needs PowerShell 7. To install the last build without building again, use `-SkipBuild`.
 
 Backtalk installs as `fyi.quin.backtalk`, and Backtalk Remote as `com.madgamer.backtalkremote`, so neither replaces Google's TalkBack, nor each other. The two apps have separate settings. Because its app ID is its own, Backtalk also installs on GrapheneOS and other ROMs that ship the AOSP TalkBack as a system app named `com.android.talkback`.
@@ -95,7 +101,7 @@ To make the switch fully automatic, grant the new app permission to change secur
 
 ## Updates
 
-Each change to Backtalk is built on GitHub as a development build, on the [dev release](https://github.com/trypsynth/backtalk/releases/tag/dev) page. Backtalk Remote has releases on its [stable release](https://github.com/mad-gamer26/BacktalkRemote/releases/tag/stable) page, which installs from there update from, and development builds on its own [dev release](https://github.com/mad-gamer26/BacktalkRemote/releases/tag/dev) page. All are signed with the same key, so either installs over the other. `backtalk.apk` is for phones and `backtalk-wear.apk` is for Wear OS watches, and each checks for updates of its own kind. The [latest release](https://github.com/trypsynth/backtalk/releases/tag/latest) holds the last build with the old app ID, which moves old installs to the new one. Backtalk checks for a new build when it starts and about once a day. When there is one, it shows a notification with the list of changes. Tap the notification to download and install the new build. The first time, Android asks you to allow Backtalk to install apps.
+Each change to Backtalk is built on GitHub as a development build, on the [dev release](https://github.com/trypsynth/backtalk/releases/tag/dev) page. Backtalk Remote has releases on its [stable release](https://github.com/mad-gamer26/BacktalkRemote/releases/tag/stable) page, which installs from there update from, and development builds on its own [dev release](https://github.com/mad-gamer26/BacktalkRemote/releases/tag/dev) page. All are signed with the same key, so either installs over the other. `backtalk.apk` is for phones and `backtalk-wear.apk` is for Wear OS watches. `backtalk-nogms.apk` is for phones without Google Play services, such as GrapheneOS without sandboxed Google Play: it carries its own model for reading text in images, so it is about 30 MB larger. Each checks for updates of its own kind. The [latest release](https://github.com/trypsynth/backtalk/releases/tag/latest) holds the last build with the old app ID, which moves old installs to the new one. Backtalk checks for a new build when it starts and about once a day. When there is one, it shows a notification with the list of changes. Tap the notification to download and install the new build. The first time, Android asks you to allow Backtalk to install apps.
 
 To check now, go to **Check for updates** in Backtalk settings. To stop the daily checks, turn off **Automatically check for updates**.
 

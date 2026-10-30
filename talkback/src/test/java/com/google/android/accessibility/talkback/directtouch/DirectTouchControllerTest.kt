@@ -216,9 +216,10 @@ class DirectTouchControllerTest {
       "region [0,80][1080,2220] complex=false",
       "region [0,80][1080,2220] complex=false",
     )
-    // Only the game's root and the shade's are fetched, once each. The bars are too small to be the
-    // shade, so they are never asked whether they belong to System UI.
-    assertEquals(2, RootsShadow.rootRequests)
+    // The game's root is fetched twice, for its package and for its native items, and the shade's
+    // once. The bars are too small to be the shade, so they are never asked whether they belong to
+    // System UI.
+    assertEquals(3, RootsShadow.rootRequests)
     assertEquals(1, ManifestsShadow.manifestRequests)
   }
 
@@ -238,7 +239,8 @@ class DirectTouchControllerTest {
       "region [0,80][1080,2220] complex=false",
       "region [0,80][1080,2220] complex=false",
     )
-    assertEquals(1, RootsShadow.rootRequests)
+    // The game's root is fetched for its package, and again once for its native items.
+    assertEquals(2, RootsShadow.rootRequests)
     assertEquals(1, ManifestsShadow.manifestRequests)
   }
 

@@ -241,6 +241,7 @@ object SoundThemes {
       "direct_touch_exit",
       "wrap_forward",
       "wrap_back",
+      "actions_available",
     )
 
   /** The sound files of [theme], by item key. */

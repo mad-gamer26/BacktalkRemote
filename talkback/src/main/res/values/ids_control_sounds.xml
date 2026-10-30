@@ -27,4 +27,5 @@
     <item name="direct_touch_exit" type="id" />
     <item name="wrap_forward" type="id" />
     <item name="wrap_back" type="id" />
+    <item name="actions_available" type="id" />
 </resources>

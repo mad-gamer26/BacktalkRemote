@@ -46,6 +46,7 @@ class SoundThemesTest {
   fun screenOnIsAnEventSound() {
     assertTrue(SoundThemes.SOUND_KEYS.contains("screen_on"))
     assertTrue(SoundThemes.SOUND_KEYS.containsAll(SoundThemes.THEME_ONLY))
+    assertTrue("actions_available" in SoundThemes.THEME_ONLY)
     assertTrue(IndividualFeedbackSettings.SOUNDS.any { it.key == "screen_on" })
   }
 

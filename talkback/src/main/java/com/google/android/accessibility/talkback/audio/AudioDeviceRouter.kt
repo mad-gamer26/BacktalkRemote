@@ -106,6 +106,14 @@ class AudioDeviceRouter @JvmOverloads constructor(
   private var keepAliveTrack: AudioTrack? = null
 
   private var speakerphoneSetByUs = false
+  // Whether this router asked for a communication device. Clearing one it never set still makes
+  // Android pick the communication route again, which during a call could move the call to a
+  // watch whose phone calls setting is off.
+  private var communicationDeviceSetByUs = false
+  // The chosen Bluetooth device already plays Backtalk's audio the way it plays media, so the
+  // communication route is left alone. That route would switch the headset into call mode, with
+  // narrowband sound and noise filtering, for every app's audio (#316).
+  @Volatile private var usesMediaRoute = false
   private var otherPlaybackCount = 0
   private val playbackCallback =
     object : AudioManager.AudioPlaybackCallback() {
@@ -243,6 +251,7 @@ class AudioDeviceRouter @JvmOverloads constructor(
 
     Log.i(TAG, "Applying audio routing for target: $currentTarget")
     LogUtils.d(TAG, "Applying audio routing for target: %s", currentTarget)
+    usesMediaRoute = false
     when (val target = currentTarget) {
       is AudioTarget.SystemDefault -> {
         stopKeepAlive()
@@ -261,8 +270,7 @@ class AudioDeviceRouter @JvmOverloads constructor(
       is AudioTarget.AnyExternal -> {
         val external = findExternalDevice(am)
         if (external != null) {
-          startKeepAlive(external)
-          setDeviceRouting(am, external, forceSpeakerOn = false)
+          routeToExternal(am, external)
         } else {
           stopKeepAlive()
           clearDeviceRouting(am)
@@ -271,14 +279,51 @@ class AudioDeviceRouter @JvmOverloads constructor(
       is AudioTarget.SpecificDevice -> {
         val specific = findSpecificDevice(am, target) ?: findExternalDevice(am)
         if (specific != null) {
-          startKeepAlive(specific)
-          setDeviceRouting(am, specific, forceSpeakerOn = false)
+          routeToExternal(am, specific)
         } else {
           stopKeepAlive()
           clearDeviceRouting(am)
         }
       }
     }
+  }
+
+  /**
+   * Routes to an external [device]: through the communication route, unless it is a Bluetooth
+   * device that already plays media, which plays Backtalk's audio too.
+   */
+  private fun routeToExternal(am: AudioManager, device: AudioDeviceInfo) {
+    if (playsAsMedia(am, device)) {
+      Log.i(TAG, "${device.productName} plays media, so routing is left to Android")
+      stopKeepAlive()
+      clearDeviceRouting(am)
+      usesMediaRoute = true
+      isRoutingActive = true
+      return
+    }
+    startKeepAlive(device)
+    setDeviceRouting(am, device, forceSpeakerOn = false)
+  }
+
+  /** Whether [device] is Bluetooth and Android plays media on it. */
+  private fun playsAsMedia(am: AudioManager, device: AudioDeviceInfo): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false
+    val media =
+      try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+          // Where media plays now. The communication route doesn't change it.
+          am.getAudioDevicesForAttributes(
+            AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).build()
+          )
+        } else {
+          // Android 12 can't say, so any connected Bluetooth media output counts.
+          am.getDevices(AudioManager.GET_DEVICES_OUTPUTS).toList()
+        }
+      } catch (e: Exception) {
+        Log.w(TAG, "Couldn't find where media plays", e)
+        return false
+      }
+    return playsAsMedia(endpointOf(device), media.map(::endpointOf))
   }
 
   /**
@@ -300,6 +345,17 @@ class AudioDeviceRouter @JvmOverloads constructor(
     if (currentTarget == AudioTarget.SystemDefault) return
     if (stepsAside) return
     val am = audioManager ?: return
+
+    if (usesMediaRoute) {
+      val targetDevice = getTargetAudioDevice()
+      if (targetDevice != null && playsAsMedia(am, targetDevice)) {
+        isRoutingActive = true
+      } else {
+        // Media moved to another output, or the device went: choose again.
+        applyRouting()
+      }
+      return
+    }
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
       val targetDevice = getTargetAudioDevice()
@@ -499,6 +555,8 @@ class AudioDeviceRouter @JvmOverloads constructor(
   private fun handleCommunicationDeviceChanged(device: AudioDeviceInfo?) {
     if (currentTarget == AudioTarget.SystemDefault) return
     if (stepsAside) return
+    // Calls and voice input own the communication route while Backtalk plays as media.
+    if (usesMediaRoute) return
     val am = audioManager ?: return
     val targetDevice = getTargetAudioDevice()
     if (targetDevice != null && (device == null || device.id != targetDevice.id)) {
@@ -626,6 +684,7 @@ class AudioDeviceRouter @JvmOverloads constructor(
           false
         }
       isRoutingActive = success
+      if (success) communicationDeviceSetByUs = true
       Log.i(TAG, "setCommunicationDevice(${device.productName} - type ${device.type}): $success")
       LogUtils.d(
         TAG,
@@ -664,8 +723,11 @@ class AudioDeviceRouter @JvmOverloads constructor(
   private fun clearDeviceRouting(am: AudioManager) {
     isRoutingActive = false
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-      am.clearCommunicationDevice()
-      Log.i(TAG, "clearCommunicationDevice() executed")
+      if (communicationDeviceSetByUs) {
+        am.clearCommunicationDevice()
+        communicationDeviceSetByUs = false
+        Log.i(TAG, "clearCommunicationDevice() executed")
+      }
     } else {
       setLegacySpeakerphone(am, false)
       // If a call is active the user owns the speaker setting now; forget that it was ours.
@@ -673,18 +735,18 @@ class AudioDeviceRouter @JvmOverloads constructor(
     }
   }
 
+  /**
+   * The phone speaker. Never the earpiece: while Android doesn't offer the speaker for a moment, such
+   * as when a call ends, routing to the earpiece kept speech there.
+   */
   @VisibleForTesting
   fun findSpeakerDevice(am: AudioManager): AudioDeviceInfo? {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-      val commDevices = am.availableCommunicationDevices
-      val speaker = commDevices.find { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
+      val speaker = am.availableCommunicationDevices.find { it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
       if (speaker != null) return speaker
-      val earpiece = commDevices.find { it.type == AudioDeviceInfo.TYPE_BUILTIN_EARPIECE }
-      if (earpiece != null) return earpiece
     }
-    val allDevices = am.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
-    return allDevices.find { it.isSink && it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
-      ?: allDevices.find { it.isSink && it.type == AudioDeviceInfo.TYPE_BUILTIN_EARPIECE }
+    return am.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+      .find { it.isSink && it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER }
   }
 
   /**
@@ -735,6 +797,9 @@ class AudioDeviceRouter @JvmOverloads constructor(
     }
   }
 
+  /** One selectable audio output: what the user sees and what is stored in the preference. */
+  class OutputOption(val displayName: String, val prefValue: String)
+
   companion object {
     private const val TAG = "AudioDeviceRouter"
     // Gaps between re-assertion passes, covering slow Bluetooth profile switches.
@@ -756,6 +821,44 @@ class AudioDeviceRouter @JvmOverloads constructor(
         it.clientAudioSource == MediaRecorder.AudioSource.VOICE_COMMUNICATION ||
           it.clientAudioSource == MediaRecorder.AudioSource.VOICE_RECOGNITION
       }
+
+    /** An output as routing compares them: its type, and its address or else its name. */
+    @VisibleForTesting
+    data class Endpoint(val type: Int, val address: String, val name: String)
+
+    private fun endpointOf(device: AudioDeviceInfo) =
+      Endpoint(
+        device.type,
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) device.address.orEmpty() else "",
+        device.productName?.toString().orEmpty(),
+      )
+
+    private val BLUETOOTH_TYPES =
+      setOf(
+        AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+        AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+        AudioDeviceInfo.TYPE_BLE_HEADSET,
+        AudioDeviceInfo.TYPE_BLE_SPEAKER,
+      )
+
+    /**
+     * Whether [target] is a Bluetooth device that plays media, as one of the [media] outputs: the
+     * same device, by address, over a profile other than the call one. A headset's call profile
+     * (SCO) and its media one (A2DP) are separate outputs with the same address.
+     */
+    @VisibleForTesting
+    @JvmStatic
+    fun playsAsMedia(target: Endpoint, media: List<Endpoint>): Boolean =
+      target.type in BLUETOOTH_TYPES &&
+        media.any {
+          it.type in BLUETOOTH_TYPES &&
+            it.type != AudioDeviceInfo.TYPE_BLUETOOTH_SCO &&
+            if (target.address.isNotEmpty() && it.address.isNotEmpty()) {
+              it.address.equals(target.address, ignoreCase = true)
+            } else {
+              it.name.isNotEmpty() && it.name.equals(target.name, ignoreCase = true)
+            }
+        }
 
     /** Checks whether an [AudioDeviceInfo] represents an external device. */
     fun isExternalDevice(device: AudioDeviceInfo): Boolean {
@@ -804,63 +907,82 @@ class AudioDeviceRouter @JvmOverloads constructor(
     }
 
     /**
+     * The connected external outputs, in the order Android reports them.
+     */
+    @JvmStatic
+    fun getExternalDevices(context: Context): List<AudioDeviceInfo> {
+      val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+      return audioManager?.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+        ?.filter { isExternalDevice(it) }
+        ?: emptyList()
+    }
+
+    /**
+     * The selectable audio outputs in cycling order: system default, phone speaker, then each
+     * connected external device by name.
+     */
+    @JvmStatic
+    fun getOutputOptions(context: Context): List<OutputOption> {
+      val options =
+        mutableListOf(
+          OutputOption(context.getString(R.string.value_audio_output_device_default), "default"),
+          OutputOption(context.getString(R.string.value_audio_output_device_speaker), "speaker"),
+        )
+      val seenNames = mutableSetOf<String>()
+      for (dev in getExternalDevices(context)) {
+        val displayName = getDeviceDisplayName(dev, context)
+        if (seenNames.add(displayName)) {
+          options.add(OutputOption(displayName, "device:${dev.type}:$displayName"))
+        }
+      }
+      return options
+    }
+
+    /**
+     * Returns the index in [options] of the output that the preference [value] chooses, or -1. A
+     * device matches by name when its type has changed, and "any external device" matches the first
+     * external device, which is where it routes.
+     */
+    @JvmStatic
+    fun indexOfOption(options: List<OutputOption>, value: String?): Int =
+      when (val target = AudioTarget.parse(value)) {
+        is AudioTarget.SystemDefault -> options.indexOfFirst { it.prefValue == "default" }
+        is AudioTarget.PhoneSpeaker -> options.indexOfFirst { it.prefValue == "speaker" }
+        is AudioTarget.SpecificDevice ->
+          options.indexOfFirst { it.prefValue == value || it.prefValue.endsWith(":${target.name}") }
+        is AudioTarget.AnyExternal -> options.indexOfFirst { it.prefValue.startsWith("device:") }
+      }
+
+    /**
      * Dynamically populates entries and entry values for the audio output device [ListPreference].
      */
     @JvmStatic
     fun updatePreference(preference: ListPreference, context: Context) {
-      val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-      val connectedDevices =
-        audioManager?.getDevices(AudioManager.GET_DEVICES_OUTPUTS) ?: emptyArray()
+      val options = getOutputOptions(context)
+      preference.entries = options.map { it.displayName }.toTypedArray()
+      preference.entryValues = options.map { it.prefValue }.toTypedArray()
 
-      val externalDevices = connectedDevices.filter { isExternalDevice(it) }
-
-      val entries = mutableListOf<CharSequence>()
-      val entryValues = mutableListOf<CharSequence>()
-
-      entries.add(context.getString(R.string.value_audio_output_device_default))
-      entryValues.add("default")
-
-      entries.add(context.getString(R.string.value_audio_output_device_speaker))
-      entryValues.add("speaker")
-
-      val seenNames = mutableSetOf<String>()
-      for (dev in externalDevices) {
-        val displayName = getDeviceDisplayName(dev, context)
-        if (seenNames.add(displayName)) {
-          entries.add(displayName)
-          entryValues.add("device:${dev.type}:$displayName")
-        }
-      }
-
-      preference.entries = entries.toTypedArray()
-      preference.entryValues = entryValues.toTypedArray()
-
-      val currentValue = preference.value
-      val currentTarget = AudioTarget.parse(currentValue)
-      val summaryText = when (currentTarget) {
-        is AudioTarget.SystemDefault ->
-          context.getString(R.string.value_audio_output_device_default)
-        is AudioTarget.PhoneSpeaker ->
-          context.getString(R.string.value_audio_output_device_speaker)
-        is AudioTarget.SpecificDevice -> {
-          val matchIndex = entryValues.indexOfFirst {
-            it.toString() == currentValue || it.toString().endsWith(":${currentTarget.name}")
-          }
-          if (matchIndex >= 0) {
-            entries[matchIndex].toString()
-          } else {
-            "${currentTarget.name} (${context.getString(R.string.value_audio_output_device_disconnected)})"
-          }
-        }
-        is AudioTarget.AnyExternal -> {
-          if (externalDevices.isNotEmpty()) {
-            getDeviceDisplayName(externalDevices.first(), context)
-          } else {
+      val currentTarget = AudioTarget.parse(preference.value)
+      preference.summary =
+        when (currentTarget) {
+          is AudioTarget.SystemDefault ->
             context.getString(R.string.value_audio_output_device_default)
+          is AudioTarget.PhoneSpeaker ->
+            context.getString(R.string.value_audio_output_device_speaker)
+          is AudioTarget.SpecificDevice -> {
+            val match = options.getOrNull(indexOfOption(options, preference.value))
+            if (match != null) {
+              match.displayName
+            } else {
+              "${currentTarget.name} (${context.getString(R.string.value_audio_output_device_disconnected)})"
+            }
+          }
+          is AudioTarget.AnyExternal -> {
+            val external = getExternalDevices(context)
+            if (external.isNotEmpty()) getDeviceDisplayName(external.first(), context)
+            else context.getString(R.string.value_audio_output_device_default)
           }
         }
-      }
-      preference.summary = summaryText
     }
   }
 }

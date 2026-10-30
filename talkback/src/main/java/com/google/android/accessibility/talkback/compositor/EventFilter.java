@@ -36,6 +36,7 @@ import com.google.android.accessibility.utils.AccessibilityNodeInfoUtils;
 import com.google.android.accessibility.utils.AccessibilityWindowInfoUtils;
 import com.google.android.accessibility.utils.Performance.EventId;
 import com.google.android.accessibility.utils.Role;
+import com.google.android.accessibility.utils.TelegramChatCell;
 import com.google.android.accessibility.utils.WebInterfaceUtils;
 import com.google.android.accessibility.utils.input.TextEventInterpreter;
 import com.google.android.accessibility.utils.monitor.TouchMonitor;
@@ -428,9 +429,22 @@ public class EventFilter {
         || WebInterfaceUtils.supportsWebActions(node)) {
       return false;
     }
+    // A Telegram chat list row may still describe the conversation it showed before it was reused,
+    // until the app fills in its focus event.
+    if (TelegramChatCell.isDescribedOnFocus(node)) {
+      return false;
+    }
     AccessibilityWindowInfo window = AccessibilityNodeInfoUtils.getWindow(node.unwrap());
     if (AccessibilityWindowInfoUtils.getType(window)
         == AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
+      return false;
+    }
+    // Some apps fill in an item's description after it is focused, such as the rows of a chat list.
+    // With nothing to say but its place in the list, speaking it now would say that alone and hide
+    // the app's event, which comes with the text.
+    if (TextUtils.isEmpty(node.getText())
+        && TextUtils.isEmpty(node.getContentDescription())
+        && node.getChildCount() == 0) {
       return false;
     }
     // An item only partly on screen, which the swipe is about to scroll into view, can have all

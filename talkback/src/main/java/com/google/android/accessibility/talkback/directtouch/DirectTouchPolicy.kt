@@ -38,6 +38,12 @@ data class DirectTouchInput(
    * are cut out of the region instead of turning direct touch off.
    */
   val regionMode: Boolean = false,
+  /**
+   * The app shows items of its own that the screen reader can use, such as buttons, over a game's
+   * drawing surface, so it is not asking for the whole screen right now. Not looked at in region
+   * mode.
+   */
+  val nativeItemsShowing: () -> Boolean = { false },
 )
 
 object DirectTouchPolicy {
@@ -51,6 +57,22 @@ object DirectTouchPolicy {
     active && windowHeight > displayHeight / 2
 
   /**
+   * Whether a view is an item of the app's own, as opposed to a game's drawing surface. Games take
+   * input focus on their surface, and the screen reader would focus it, but it has nothing to say.
+   * So an item needs something to say as well: its text, description or state.
+   */
+  fun isNativeItem(backtalkWouldFocus: Boolean, label: CharSequence?): Boolean =
+    backtalkWouldFocus && !label.isNullOrBlank()
+
+  /**
+   * Whether a view is a game's drawing surface: the screen reader would focus it, but it has nothing
+   * to say. Apps without one, such as a launcher used for its gestures, show labels all the time, so
+   * only native items over a surface keep touch with the screen reader.
+   */
+  fun isDrawingSurface(backtalkWouldFocus: Boolean, label: CharSequence?): Boolean =
+    backtalkWouldFocus && label.isNullOrBlank()
+
+  /**
    * Whether touches should go straight to the app in front. In region mode, they then go straight
    * only to the views it marks, and only while some are on screen.
    */
@@ -61,5 +83,6 @@ object DirectTouchPolicy {
       (input.regionMode || !input.dialogShowing) &&
       !input.textFieldFocused &&
       !input.foreignAppWindow() &&
-      !input.systemUiCoversHalf()
+      !input.systemUiCoversHalf() &&
+      (input.regionMode || !input.nativeItemsShowing())
 }

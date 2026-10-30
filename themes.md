@@ -148,6 +148,7 @@ play is left out when the theme is installed, and Backtalk says so.
 | `direct_touch_exit` | Direct touch turned off (plays no sound by default in the Backtalk theme) |
 | `wrap_forward` | Moving forward wrapped to the first item (plays no sound by default in the Backtalk theme) |
 | `wrap_back` | Moving back wrapped to the last item (plays no sound by default in the Backtalk theme) |
+| `actions_available` | Focus on an item that has more actions, as in the Actions menu. Plays as the item gets focus, or after it is spoken, as set in **Sound and vibration** > **Actions available sound** (plays no sound by default in the Backtalk theme) |
 | `loading` | Loading |
 | `browse_mode_on_v4_2` | Browse mode on |
 | `browse_mode_off_v4_2` | Browse mode off |

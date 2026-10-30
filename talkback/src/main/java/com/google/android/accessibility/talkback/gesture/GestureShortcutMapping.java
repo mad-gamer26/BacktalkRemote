@@ -439,6 +439,8 @@ public class GestureShortcutMapping implements GestureShortcutProvider {
     NEXT(R.string.shortcut_value_next, R.string.shortcut_next),
     FIRST_IN_SCREEN(R.string.shortcut_value_first_in_screen, R.string.shortcut_first_in_screen),
     LAST_IN_SCREEN(R.string.shortcut_value_last_in_screen, R.string.shortcut_last_in_screen),
+    SCROLL_TO_TOP(R.string.shortcut_value_scroll_to_top, R.string.shortcut_scroll_to_top),
+    SCROLL_TO_BOTTOM(R.string.shortcut_value_scroll_to_bottom, R.string.shortcut_scroll_to_bottom),
     PREV_CONTAINER(R.string.shortcut_value_prev_container, R.string.shortcut_prev_container),
     NEXT_CONTAINER(R.string.shortcut_value_next_container, R.string.shortcut_next_container),
     PREVIOUS_WINDOW(R.string.shortcut_value_previous_window, R.string.shortcut_previous_window),
@@ -455,6 +457,8 @@ public class GestureShortcutMapping implements GestureShortcutProvider {
     BACK(R.string.shortcut_value_back, R.string.shortcut_back),
     OVERVIEW(R.string.shortcut_value_overview, R.string.shortcut_overview),
     NOTIFICATIONS(R.string.shortcut_value_notifications, R.string.shortcut_notifications),
+    SYSTEM_NOTIFICATIONS(
+        R.string.shortcut_value_system_notifications, R.string.shortcut_system_notifications),
     QUICK_SETTINGS(R.string.shortcut_value_quick_settings, R.string.shortcut_quick_settings),
     ALL_APPS(R.string.shortcut_value_all_apps, R.string.shortcut_all_apps),
     A11Y_BUTTON(R.string.shortcut_value_a11y_button, R.string.shortcut_a11y_button),
@@ -514,6 +518,9 @@ public class GestureShortcutMapping implements GestureShortcutProvider {
     PASTE(R.string.shortcut_value_paste, android.R.string.paste),
     COPY_LAST_SPOKEN_UTTERANCE(
         R.string.shortcut_value_copy_last_spoken_phrase, R.string.title_copy_last_spoken_phrase),
+    APPEND_LAST_SPOKEN_UTTERANCE(
+        R.string.shortcut_value_append_last_spoken_phrase,
+        R.string.title_append_last_spoken_phrase),
     BRAILLE_KEYBOARD(R.string.shortcut_value_braille_keyboard, R.string.shortcut_braille_keyboard),
 
     // Special features.
@@ -522,6 +529,12 @@ public class GestureShortcutMapping implements GestureShortcutProvider {
     MEDIA_CONTROL_OR_VOICE_INPUT(
         R.string.shortcut_value_media_control_or_voice_input,
         R.string.shortcut_media_control_or_voice_input),
+    MEDIA_STOP(R.string.shortcut_value_media_stop, R.string.shortcut_media_stop),
+    MEDIA_PREVIOUS(R.string.shortcut_value_media_previous, R.string.shortcut_media_previous),
+    MEDIA_NEXT(R.string.shortcut_value_media_next, R.string.shortcut_media_next),
+    MEDIA_REWIND(R.string.shortcut_value_media_rewind, R.string.shortcut_media_rewind),
+    MEDIA_FAST_FORWARD(
+        R.string.shortcut_value_media_fast_forward, R.string.shortcut_media_fast_forward),
     INCREASE_VOLUME(R.string.shortcut_value_increase_volume, R.string.shortcut_increase_volume),
     DECREASE_VOLUME(R.string.shortcut_value_decrease_volume, R.string.shortcut_decrease_volume),
     VOICE_COMMANDS(R.string.shortcut_value_voice_commands, R.string.shortcut_voice_commands),

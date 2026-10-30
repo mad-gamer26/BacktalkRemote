@@ -43,6 +43,7 @@ object SoundVibrations {
       "direct_touch_exit",
       "wrap_forward",
       "wrap_back",
+      "actions_available",
     )
 
   /**

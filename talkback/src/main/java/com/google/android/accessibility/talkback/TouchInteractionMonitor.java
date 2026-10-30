@@ -65,6 +65,7 @@ import androidx.annotation.RequiresApi;
 import androidx.annotation.VisibleForTesting;
 import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 import com.google.android.accessibility.talkback.PrimesController.TimerAction;
+import com.google.android.accessibility.talkback.actor.DirectClick;
 import com.google.android.accessibility.talkback.contextmenu.ListMenuManager;
 import com.google.android.accessibility.talkback.flags.FeatureFlagReader;
 import com.google.android.accessibility.talkback.focusmanagement.FocusProcessorForTapAndTouchExploration;
@@ -91,6 +92,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
@@ -119,6 +121,8 @@ public class TouchInteractionMonitor
 
   // Queue size to hold the most recent change requests of controller state.
   private static final int MAX_CHANGE_REQUEST_SIZE = 5;
+  /** Time after a swipe's start limit for its last motion event to arrive. */
+  private static final int SWIPE_START_MARGIN_MS = 10;
 
   private static final ImmutableSet<Integer> TOUCH_EXPLORE_GATE =
       ImmutableSet.of(
@@ -170,6 +174,11 @@ public class TouchInteractionMonitor
   public static boolean isFingerDown() {
     return fingerDown;
   }
+
+  // Direct click on the main display, whose presses are neither a finger nor a gesture, and which
+  // gesture detection hands to the app.
+  private @Nullable DirectClick directClick;
+  private final BooleanSupplier directClickHandOver = this::handOverDirectClick;
   // A gesture was dispatched before the controller cleared the interaction. The rest of that
   // gesture's events cancel the gesture matchers, so a new first finger down in the same
   // interaction must clear them again.
@@ -188,6 +197,8 @@ public class TouchInteractionMonitor
   // after the finger has been lifted.
   // This happens because of the time overhead of IPCs.
   private final int determineUserIntentTimeout = GestureConfiguration.DOUBLE_TAP_TIMEOUT_MS;
+  /** How long after touch down a one-finger swipe can start: the swipe matchers' start limit. */
+  private final int swipeStartWindowMs;
   private int typingFocusUserIntentTimeout;
   private int touchFocusUserIntentTimeout;
 
@@ -394,6 +405,19 @@ public class TouchInteractionMonitor
     LogUtils.v(LOG_TAG, "Non IME Touch focus time out value:%d", touchFocusUserIntentTimeout);
     updateMultiTapTimeout(prefs);
     requestTouchExplorationDelayed = new RequestTouchExplorationDelayed(determineUserIntentTimeout);
+    swipeStartWindowMs =
+        (int)
+                (context
+                        .getResources()
+                        .getInteger(
+                            com.google.android.accessibility.utils.R.integer
+                                .config_max_time_to_start_swipe_ms_per_cm)
+                    * context
+                        .getResources()
+                        .getFloat(
+                            com.google.android.accessibility.utils.R.dimen
+                                .config_gesture_confirm_distance_cm))
+            + SWIPE_START_MARGIN_MS;
     DisplayMetrics metrics = context.getResources().getDisplayMetrics();
     edgeSwipeHeightPixels = metrics.ydpi / GestureUtils.CM_PER_INCH * EDGE_SWIPE_HEIGHT_CM;
 
@@ -486,6 +510,11 @@ public class TouchInteractionMonitor
       // This phone is controlling another, whose Backtalk handles the touch.
       return;
     }
+    if (event != null
+        && directClick != null
+        && directClick.claim(event, directClickHandOver)) {
+      return;
+    }
     if (event != null) {
       int action = event.getActionMasked();
       if (action == ACTION_DOWN) {
@@ -525,7 +554,7 @@ public class TouchInteractionMonitor
         waitFirstMotionEvent = false;
       }
       if (clearGestureDetectorOnNextDown && event.getActionMasked() == ACTION_DOWN) {
-        if (BuildConfig.DEBUG) {
+        if (LogUtils.shouldLog(Log.DEBUG)) {
           Log.d(DEBUG_GESTURE_TAG, "New touch after a dispatched gesture, clearing matchers");
         }
         clearGestureDetectorOnNextDown = false;
@@ -658,7 +687,7 @@ public class TouchInteractionMonitor
 
   @MainThread
   public void onStateChanged(int state) {
-    if (BuildConfig.DEBUG) {
+    if (LogUtils.shouldLog(Log.DEBUG)) {
       Log.d(
           DEBUG_GESTURE_TAG,
           stateToString(this.state)
@@ -685,6 +714,10 @@ public class TouchInteractionMonitor
       Performance.getInstance().onGestureRecognized(eventId, GESTURE_TOUCH_EXPLORE);
       waitFirstMotionEvent = true;
     } else if (state == STATE_CLEAR) {
+      // No finger is down once the touch has ended. A touch that Android hands straight to the
+      // app, such as one in direct touch's pass-through region, reaches the service as a down
+      // without its lift, so the lift can't be what says so.
+      fingerDown = false;
       if (waitToChange) {
         // If there's a pending Touch Explore feature change request, this is the right time to do.
         idlePerformer.provisionTouchExploreFeature(queuedState);
@@ -974,7 +1007,7 @@ public class TouchInteractionMonitor
 
   @Override
   public void onGestureCompleted(GestureEvent gestureEvent) {
-    if (BuildConfig.DEBUG) {
+    if (LogUtils.shouldLog(Log.DEBUG)) {
       Log.d(
           DEBUG_GESTURE_TAG,
           "Gesture "
@@ -1118,7 +1151,7 @@ public class TouchInteractionMonitor
         && (state != STATE_TOUCH_INTERACTING
             || gestureStarted
             || !gestureDetector.isMultiFingerGesturesEnabled())) {
-      if (BuildConfig.DEBUG && event.getActionMasked() == ACTION_POINTER_DOWN) {
+      if (LogUtils.shouldLog(Log.DEBUG) && event.getActionMasked() == ACTION_POINTER_DOWN) {
         Log.d(
             DEBUG_GESTURE_TAG,
             "Rotation not possible: state="
@@ -1134,7 +1167,7 @@ public class TouchInteractionMonitor
     }
     if (!wasRotating) {
       // The rotation starts. No other gesture, touch exploration or passthrough for this touch.
-      if (BuildConfig.DEBUG) {
+      if (LogUtils.shouldLog(Log.DEBUG)) {
         Log.d(DEBUG_GESTURE_TAG, "Two-finger rotation started");
       }
       keepMonitorTouchExplore = false;
@@ -1151,7 +1184,7 @@ public class TouchInteractionMonitor
   private void onRotationStep(boolean clockwise) {
     int gestureId =
         clockwise ? GESTURE_2_FINGER_ROTATE_CLOCKWISE : GESTURE_2_FINGER_ROTATE_COUNTERCLOCKWISE;
-    if (BuildConfig.DEBUG) {
+    if (LogUtils.shouldLog(Log.DEBUG)) {
       Log.d(
           DEBUG_GESTURE_TAG,
           "Gesture " + AccessibilityServiceCompatUtils.gestureIdToString(gestureId));
@@ -1183,6 +1216,14 @@ public class TouchInteractionMonitor
 
   @Override
   public void onGestureProcessing(int gestureId) {
+    if (gestureId >= GESTURE_SWIPE_UP && gestureId <= GESTURE_SWIPE_DOWN_AND_RIGHT) {
+      // A one-finger swipe moving its way: touch exploration waits until the swipe either starts
+      // or runs out of time to, so that a swipe that starts slowly isn't explored.
+      if (requestTouchExplorationDelayed.isPending() && !isLiftToType) {
+        requestTouchExplorationDelayed.extendTo(swipeStartWindowMs);
+      }
+      return;
+    }
     if (gestureId != GESTURE_DOUBLE_TAP) {
       return;
     }
@@ -1258,6 +1299,39 @@ public class TouchInteractionMonitor
 
   public void setServiceHandlesDoubleTap(boolean mode) {
     serviceHandlesDoubleTap = mode;
+  }
+
+  /** Sets the direct click whose presses to take and hand to the app, or none with null. */
+  public void setDirectClick(@Nullable DirectClick directClick) {
+    this.directClick = directClick;
+  }
+
+  /**
+   * Returns whether a direct click can press now, so that this gets the press and can hand it to
+   * the app. Not while a finger is down, whose touch the press would cancel, nor in touch
+   * exploration, which Android goes on with for a while after the finger lifts.
+   */
+  public boolean isReadyForDirectClick() {
+    return directClick != null
+        && stateInActive
+        && !fingerDown
+        && !stateChangeRequested
+        && (state == STATE_CLEAR || state == STATE_TOUCH_INTERACTING);
+  }
+
+  /**
+   * Hands the press of a direct click to the app, and returns whether the app gets it. Android has
+   * done so itself if the press landed in a pass-through region.
+   */
+  private boolean handOverDirectClick() {
+    if (state == STATE_DELEGATING) {
+      return true;
+    }
+    if (state != STATE_TOUCH_INTERACTING || stateChangeRequested || !isStateTransitionAllowed()) {
+      return false;
+    }
+    requestDelegating("handOverDirectClick");
+    return true;
   }
 
   private void trackStateChangeRequest(int state, String caller) {
@@ -1421,6 +1495,17 @@ public class TouchInteractionMonitor
 
     public void post() {
       post(0);
+    }
+
+    /** Fires no sooner than [totalMs] after it was posted. */
+    public void extendTo(int totalMs) {
+      int elapsed = (int) (SystemClock.uptimeMillis() - postTime);
+      if (totalMs <= actualDelay) {
+        return;
+      }
+      mainHandler.removeCallbacks(this);
+      actualDelay = totalMs;
+      mainHandler.postDelayed(this, Math.max(0, totalMs - elapsed));
     }
 
     public int remainingTime() {

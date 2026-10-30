@@ -63,6 +63,7 @@ object IndividualFeedbackSettings {
       FeedbackItem("direct_touch_exit", R.string.individual_sound_direct_touch_exit),
       FeedbackItem("wrap_forward", R.string.individual_sound_wrap_forward),
       FeedbackItem("wrap_back", R.string.individual_sound_wrap_back),
+      FeedbackItem("actions_available", R.string.individual_sound_actions_available),
       FeedbackItem("loading", R.string.individual_sound_loading),
       FeedbackItem("browse_mode_on_v4_2", R.string.individual_sound_browse_mode_on),
       FeedbackItem("browse_mode_off_v4_2", R.string.individual_sound_browse_mode_off),

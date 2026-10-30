@@ -61,6 +61,8 @@
     <string name="individual_sound_wrap_forward">Wrapped to the start</string>
     <!-- Sound played when moving back wraps around to the last item. [CHAR LIMIT=60] -->
     <string name="individual_sound_wrap_back">Wrapped to the end</string>
+    <!-- Sound played when the item in focus has more actions. [CHAR LIMIT=60] -->
+    <string name="individual_sound_actions_available">Actions available</string>
     <!-- Sound played while waiting for a result to load. [CHAR LIMIT=60] -->
     <string name="individual_sound_loading">Loading</string>
     <!-- Sound played when keyboard browse mode turns on. [CHAR LIMIT=60] -->

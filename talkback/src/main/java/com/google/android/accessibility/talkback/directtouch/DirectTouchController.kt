@@ -31,12 +31,14 @@ import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
+import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import com.google.android.accessibility.talkback.Feedback
 import com.google.android.accessibility.talkback.Feedback.PassThroughMode.Action.DIRECT_TOUCH_REGION
 import com.google.android.accessibility.talkback.Pipeline
 import com.google.android.accessibility.talkback.R
 import com.google.android.accessibility.talkback.focusmanagement.LiftToActivateMode
 import com.google.android.accessibility.talkback.monitor.RingerModeAndScreenMonitor
+import com.google.android.accessibility.utils.AccessibilityNodeInfoUtils
 import com.google.android.accessibility.utils.AccessibilityWindowInfoUtils.WINDOW_ID_NONE
 import com.google.android.accessibility.utils.FeatureSupport
 import com.google.android.accessibility.utils.Performance
@@ -66,8 +68,12 @@ import com.google.android.accessibility.utils.output.ThemeVibrations
  * touch off. Direct touch is on, and said to be, for as long as the app may have it, whether or not
  * a marked view is showing, so the marked views coming and going are not announced.
  *
- * Everything comes from Backtalk's own window, screen and display monitors, so there is no tree
- * scan. A region mode app is asked for its marked views by ID, one call per window that the app
+ * An app turned on for the whole screen that shows native items, such as buttons, over a game's
+ * drawing surface is built for the screen reader there, so touch stays with Backtalk while they
+ * show. That is the one look at an app's views, bounded to [MAX_NODES_LOOKED_AT] of them, and the
+ * app's content changes make it again.
+ *
+ * Everything else comes from Backtalk's own window, screen and display monitors. A region mode app is asked for its marked views by ID, one call per window that the app
  * answers itself. Turning direct touch off takes effect at once. Turning it on waits [DEBOUNCE_MS] so that a
  * burst of window changes settles first. All callbacks arrive on the main thread.
  */
@@ -99,6 +105,13 @@ class DirectTouchController(
   // The roots of the region mode app's windows, by window ID, kept while the windows are on screen.
   // Asking for marked views by ID only needs the root, so it isn't fetched again for every look.
   private val regionRoots = HashMap<Int, AccessibilityNodeInfo>()
+
+  // The app in front while it is turned on for the whole screen, whose content changes can bring
+  // native items on screen or take them away.
+  private var wholeScreenPackage: String? = null
+  // The roots of the windows looked at for native items, kept while the windows are on screen, so
+  // that each is fetched from its app once.
+  private val nativeItemRoots = HashMap<Int, AccessibilityNodeInfo>()
 
   // The manifest of the last app it was read for. It is read again once another app was asked
   // about, so that an app updated in the meantime is read afresh.
@@ -169,6 +182,13 @@ class DirectTouchController(
     }
     val regionApp = regionPackage != null && event.packageName?.toString() == regionPackage
     if (regionApp && regionAllowed && DirectTouchRegions.movesMarkedAreas(event.eventType)) {
+      onMarkedAreasMayHaveMoved()
+    }
+    if (
+      wholeScreenPackage != null &&
+        event.packageName?.toString() == wholeScreenPackage &&
+        event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+    ) {
       onMarkedAreasMayHaveMoved()
     }
     // A region mode app keeps most of its screen with Backtalk, so a text field there can take and
@@ -245,6 +265,7 @@ class DirectTouchController(
     handler.removeCallbacks(regionRecheck)
     regionRecheckPending = false
     regionRoots.clear()
+    nativeItemRoots.clear()
     announcedOn = false
     if (active || partRegionSent) {
       active = false
@@ -292,11 +313,20 @@ class DirectTouchController(
     }
     lastEvaluateTime = SystemClock.uptimeMillis()
     val windows = service.windows.orEmpty()
+    nativeItemRoots.keys.retainAll(windows.map { it.id }.toSet())
     val mainPackage = windows.firstOrNull { it.id == mainWindowId }?.let { rootPackage(it) }
     mainPackage?.let { noteFirstSight(it) }
     val directTyping = mainPackage != null && DirectTouchSettings.isDirectTyping(prefs, mainPackage)
     val regionMode = mainPackage != null && isRegionApp(mainPackage)
     val allowed = mainPackage != null && shouldBeActive(windows, mainPackage, regionMode)
+    wholeScreenPackage =
+      mainPackage.takeIf {
+        !regionMode &&
+          it != null &&
+          it !in IGNORED_PACKAGES &&
+          DirectTouchSettings.isMasterEnabled(prefs) &&
+          DirectTouchSettings.isAppEnabled(prefs, it)
+      }
     regionPackage = mainPackage.takeIf { regionMode }
     regionAllowed = regionMode && allowed
     val navBarDirect = isNavBarDirect()
@@ -583,8 +613,50 @@ class DirectTouchController(
         foreignAppWindow = { otherApplicationWindows.any { rootPackage(it) != mainPackage } },
         systemUiCoversHalf = { systemUiCoversHalf(windows) },
         regionMode = regionMode,
+        nativeItemsShowing = {
+          hasNativeItemsOverSurface(windows.firstOrNull { it.id == mainWindowId })
+        },
       )
     return DirectTouchPolicy.shouldBeActive(input)
+  }
+
+  /**
+   * Whether the app's main window shows items of its own that the screen reader can use over a
+   * game's drawing surface. Items are visible views that Backtalk itself would give focus and that
+   * have something to say, such as buttons, or labels and images that have a description. The
+   * surface takes focus but says nothing. A game showing a menu over its play field is built for
+   * the screen reader there, so it keeps touch until the menu goes. An app with no surface, such as
+   * a launcher used for its gestures, shows labels all the time and still wants the whole screen
+   * (#288). Games give their items the bounds of the whole window, so size says nothing. Only the
+   * first [MAX_NODES_LOOKED_AT] views are looked at, so a big tree costs a bounded amount.
+   */
+  private fun hasNativeItemsOverSurface(window: AccessibilityWindowInfo?): Boolean {
+    window ?: return false
+    val root = nativeItemRoots[window.id] ?: window.root?.also { nativeItemRoots[window.id] = it }
+      ?: return false
+    val queue = ArrayDeque<AccessibilityNodeInfo>()
+    queue.add(root)
+    var looked = 0
+    var item = false
+    var surface = false
+    while (queue.isNotEmpty() && looked < MAX_NODES_LOOKED_AT) {
+      val node = queue.removeFirst()
+      looked++
+      if (node !== root && node.isVisibleToUser) {
+        val compat = AccessibilityNodeInfoCompat.wrap(node)
+        val focus = AccessibilityNodeInfoUtils.shouldFocusNode(compat)
+        val label = compat.text ?: compat.contentDescription ?: compat.stateDescription
+        item = item || DirectTouchPolicy.isNativeItem(focus, label)
+        surface = surface || DirectTouchPolicy.isDrawingSurface(focus, label)
+        if (item && surface) {
+          return true
+        }
+      }
+      for (i in 0 until node.childCount) {
+        node.getChild(i)?.let(queue::add)
+      }
+    }
+    return false
   }
 
   private fun systemUiCoversHalf(windows: List<AccessibilityWindowInfo>): Boolean {
@@ -685,6 +757,7 @@ class DirectTouchController(
     const val DEBOUNCE_MS = 150L
     // Longer than the gap between the two reports of one press, shorter than a second tap.
     const val REPEAT_MS = 250L
+    const val MAX_NODES_LOOKED_AT = 300
     const val SYSTEM_UI = "com.android.systemui"
     // The names a sound theme replaces the on and off vibrations by.
     const val THEME_ON = "direct_touch_on"

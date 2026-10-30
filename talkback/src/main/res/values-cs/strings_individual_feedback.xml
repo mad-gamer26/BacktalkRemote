@@ -30,6 +30,7 @@
   <string name="individual_sound_direct_touch_exit">Přímý dotyk vypnut</string>
   <string name="individual_sound_wrap_forward">Přechod na začátek</string>
   <string name="individual_sound_wrap_back">Přechod na konec</string>
+  <string name="individual_sound_actions_available">Dostupné akce</string>
   <string name="individual_sound_loading">Načítání</string>
   <string name="individual_sound_browse_mode_on">Režim procházení zapnut</string>
   <string name="individual_sound_browse_mode_off">Režim procházení vypnut</string>

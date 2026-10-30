@@ -37,7 +37,9 @@ import com.google.android.accessibility.talkback.TalkBackAnalyticsImpl
 import com.google.android.accessibility.talkback.TalkBackService
 import com.google.android.accessibility.talkback.actor.gemini.AiCoreEndpoint
 import com.google.android.accessibility.talkback.actor.gemini.GeminiActor
+import com.google.android.accessibility.talkback.actor.gemini.GeminiActor.ErrorReason
 import com.google.android.accessibility.talkback.actor.gemini.GeminiActor.FinishReason
+import com.google.android.accessibility.talkback.actor.gemini.GeminiCommand
 import com.google.android.accessibility.talkback.dynamicfeature.DownloaderFactory
 import com.google.android.accessibility.talkback.dynamicfeature.ModuleStateManager
 import com.google.android.accessibility.talkback.focusmanagement.AccessibilityFocusMonitor
@@ -45,6 +47,7 @@ import com.google.android.accessibility.talkback.imagecaption.CaptionRequest
 import com.google.android.accessibility.talkback.imagecaption.ImageCaptionStorage
 import com.google.android.accessibility.talkback.imagecaption.RequestList
 import com.google.android.accessibility.talkback.imagecaption.ScreenshotCaptureRequest
+import com.google.android.accessibility.talkback.imagecaption.ScreenshotCaptureRequestAccess
 import com.google.android.accessibility.talkback.imagedescription.ImageDescriptionProcessor
 import com.google.android.accessibility.utils.FormFactorUtils
 import com.google.android.accessibility.utils.SharedPreferencesUtils
@@ -52,6 +55,7 @@ import java.time.Duration
 import java.util.concurrent.Executor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -95,18 +99,60 @@ class ImageCaptionerRequestsTest {
       focus?.let { AccessibilityNodeInfoCompat.obtain(it) }
   }
 
+  /** Keeps the requests that GeminiActor sends to the model, which the tests then end. */
+  private class FakeGeminiEndpoint : GeminiActor.GeminiEndpoint {
+    val listeners = mutableListOf<GeminiActor.GeminiResponseListener>()
+
+    override fun createRequestGeminiCommand(
+      text: String?,
+      image: Bitmap?,
+      manualTrigger: Boolean,
+      geminiResponseListener: GeminiActor.GeminiResponseListener?,
+    ): Boolean = false
+
+    override fun createRequestGeminiCommand(command: GeminiCommand): Boolean {
+      listeners += (command as GeminiCommand.CommonRequest).listener
+      return true
+    }
+
+    override fun cancelCommand() {}
+
+    override fun hasPendingTransaction(): Boolean = false
+  }
+
   private val context: Context
     get() = RuntimeEnvironment.getApplication()
 
   private val spoken = mutableListOf<CharSequence?>()
   private val geminiRequests = mutableListOf<Feedback.GeminiRequest>()
   private val resultDialogs = mutableListOf<CharSequence?>()
+
+  /** When set, Describe image requests go through it and back, as Actors sends them. */
+  private var geminiActor: GeminiActor? = null
   private val pipeline =
     object : Pipeline.FeedbackReturner {
       override fun returnFeedback(feedback: Feedback): Boolean {
         val part = feedback.failovers().first()
         part.speech()?.let { spoken += it.text() }
-        part.geminiRequest()?.let { geminiRequests += it }
+        part.geminiRequest()?.let {
+          geminiRequests += it
+          geminiActor?.requestOnlineGeminiCommand(
+            it.requestId(),
+            GeminiActor.Action.IMAGE_DESCRIPTION,
+            it.text(),
+            it.image(),
+          )
+        }
+        part.imageCaptionResult()?.let {
+          captioner.handleResultFromGemini(
+            it.requestId(),
+            it.text(),
+            it.isSuccess(),
+            it.finishReason(),
+            it.errorReason(),
+            it.userRequested(),
+          )
+        }
         part.geminiResultDialog()?.let { resultDialogs += it.imageDescriptionResult()?.text() }
         return true
       }
@@ -118,6 +164,9 @@ class ImageCaptionerRequestsTest {
 
   @Before
   fun setUp() {
+    // Screenshots start at once, so that only the requests' own times decide what runs. The wait
+    // for the focus indicator to disappear has its own test.
+    ScreenshotCaptureRequestAccess.setHiddenFocusRedrawMs(0)
     // TalkBackService does this when it starts.
     FormFactorUtils.initialize(context)
     service = Robolectric.setupService(FakeScreenshotService::class.java)
@@ -148,16 +197,27 @@ class ImageCaptionerRequestsTest {
     node = AccessibilityNodeInfoCompat.wrap(info)
   }
 
-  /** ImageCaptioner asks the actor state whether the phone has AICore, which it does not. */
-  private fun actorStateWithoutAiCore(): ActorState {
+  @After
+  fun tearDown() {
+    ScreenshotCaptureRequestAccess.setHiddenFocusRedrawMs(150)
+  }
+
+  /** A service with a context, which is all that GeminiActor needs of it. */
+  private fun talkBackService(): TalkBackService {
     val talkBack = TalkBackService()
     ContextWrapper::class
       .java
       .getDeclaredMethod("attachBaseContext", Context::class.java)
       .apply { isAccessible = true }
       .invoke(talkBack, context)
+    return talkBack
+  }
+
+  /** ImageCaptioner asks the actor state whether the phone has AICore, which it does not. */
+  private fun actorStateWithoutAiCore(): ActorState {
     val aiCore = AiCoreEndpoint(context)
-    val gemini = GeminiActor(talkBack, TalkBackAnalyticsImpl(context), PrimesController(), aiCore, aiCore)
+    val gemini =
+      GeminiActor(talkBackService(), TalkBackAnalyticsImpl(context), PrimesController(), aiCore, aiCore)
     return ActorState(
       ActorStateWritable(
         null,
@@ -265,6 +325,24 @@ class ImageCaptionerRequestsTest {
     assertEquals(3, service.callbacks.size)
   }
 
+  @Test
+  fun aScreenshotTheUserAskedFor_waitsForTheFocusIndicatorToDisappear() {
+    ScreenshotCaptureRequestAccess.setHiddenFocusRedrawMs(150)
+    captioner.caption(node, /* isUserRequested= */ true)
+    idle()
+    assertEquals(0, service.callbacks.size)
+    advance(Duration.ofMillis(150))
+    assertEquals(1, service.callbacks.size)
+  }
+
+  @Test
+  fun anAutomaticScreenshot_doesNotWait() {
+    ScreenshotCaptureRequestAccess.setHiddenFocusRedrawMs(150)
+    captioner.caption(node, /* isUserRequested= */ false)
+    idle()
+    assertEquals(1, service.callbacks.size)
+  }
+
   /** Describe image with Gemini, as the menu does, up to the request to the model. */
   private fun describeImageWithGemini(): Feedback.GeminiRequest {
     val screenshots = service.callbacks.size
@@ -312,5 +390,48 @@ class ImageCaptionerRequestsTest {
     advance(Duration.ofSeconds(30))
     answer(request, "A cat on a sofa.")
     assertEquals(spoken.toString(), listOf<CharSequence?>("A cat on a sofa."), resultDialogs)
+  }
+
+  @Test
+  fun aDescribeImageThatTheModelCancels_letsTheNextOneStart() {
+    val model = FakeGeminiEndpoint()
+    geminiActor =
+      GeminiActor(
+          talkBackService(),
+          TalkBackAnalyticsImpl(context),
+          PrimesController(),
+          model,
+          AiCoreEndpoint(context),
+        )
+        .apply { setPipeline(pipeline) }
+    describeImageWithGemini() // A
+    captioner.captionWithGemini(node) // B, which waits for A's caption
+    idle()
+    // A's text recognition has ended, having found nothing, so A waits only for the model.
+    advance(CaptionRequest.CAPTION_TIMEOUT_MS)
+    assertEquals(1, service.callbacks.size)
+
+    // The model on the phone gives up on A: it timed out, ran out of memory, or made way for a
+    // newer request.
+    model.listeners.single().onError(ErrorReason.JOB_CANCELLED)
+    idle()
+    assertEquals("B did not start after A was cancelled", 2, service.callbacks.size)
+    assertEquals("A had nothing to say", 0, spoken.size)
+  }
+
+  @Test
+  fun aDescriptionThatComesAfterItsCaptionEnded_isIgnored() {
+    val first = describeImageWithGemini()
+    // Its caption ends without the description, as when Backtalk pauses.
+    captioner.clearRequests()
+    val second = describeImageWithGemini()
+
+    answer(first, "A cat on a sofa.")
+    assertEquals(listOf<CharSequence?>(), spoken)
+    assertTrue(resultDialogs.isEmpty())
+
+    advance(CaptionRequest.CAPTION_TIMEOUT_MS)
+    answer(second, "A dog on a rug.")
+    assertEquals(listOf<CharSequence?>("A dog on a rug."), resultDialogs)
   }
 }
