@@ -20,8 +20,8 @@ use crate::host_audio::HostAudio;
 use crate::keys::{self, Keys, NONCE_LEN};
 use crate::link::{self, Incoming, Server, Udp};
 use crate::peer::{
-    self, GlobalAction, MAX_TYPED_CHARS, PEER_VERSION, Screen, Sequence, ToController, ToHost,
-    TouchEvent,
+    self, GlobalAction, KeyInput, MAX_TYPED_CHARS, PEER_VERSION, Screen, Sequence, ToController,
+    ToHost, TouchEvent,
 };
 use crate::seal::{self, Direction, Kind, Sealer};
 use crate::{Backoff, RELAY_SILENCE, runtime};
@@ -64,6 +64,9 @@ pub trait HostListener: Send + Sync {
     fn on_global_action(&self, action: GlobalAction);
     /// Text to type into the focused field, at the cursor.
     fn on_type_text(&self, text: String);
+    /// A key from `controller`'s keyboard, to handle as a key of a keyboard
+    /// plugged into the phone.
+    fn on_key(&self, controller: u32, key: KeyInput);
     /// Whether to hand Backtalk's audio to [`HostSession::push_audio`]:
     /// true while a device is controlling the phone.
     fn on_audio_wanted(&self, wanted: bool);
@@ -438,6 +441,7 @@ impl Task {
                     stream_nonce: to_hex(stream_nonce),
                     name: self.name.clone(),
                     screen: self.screen,
+                    keyboard: true,
                 };
                 Some(handshake.seal(
                     Direction::ToController,
@@ -461,6 +465,11 @@ impl Task {
                     ToHost::Type { text, .. } => {
                         if !text.is_empty() && text.chars().count() <= MAX_TYPED_CHARS {
                             self.listener.on_type_text(text);
+                        }
+                    }
+                    ToHost::Key { key, .. } => {
+                        if peer::key_is_valid(&key) {
+                            self.listener.on_key(from, key);
                         }
                     }
                     ToHost::Bye { .. } => {

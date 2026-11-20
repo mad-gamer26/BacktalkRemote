@@ -1356,7 +1356,27 @@ public class TalkBackService extends AccessibilityServiceCompat
    * Returns whether the key comes from a physical keyboard, not a virtual device, headset or watch
    * buttons, or a game controller.
    */
+  /** The key from a remote controlling device's keyboard being handled now, on the main thread. */
+  private static @Nullable KeyEvent remoteKeyEvent;
+
+  /**
+   * Handles a key from the keyboard of a device controlling this phone remotely, as a key of a
+   * keyboard plugged into the phone, and returns whether Backtalk consumed it. A key not consumed
+   * is for the app; remote access delivers it.
+   */
+  public boolean onRemoteKeyEvent(KeyEvent keyEvent) {
+    remoteKeyEvent = keyEvent;
+    try {
+      return onKeyEvent(keyEvent);
+    } finally {
+      remoteKeyEvent = null;
+    }
+  }
+
   private static boolean isFromPhysicalKeyboard(KeyEvent keyEvent) {
+    if (keyEvent == remoteKeyEvent) {
+      return true;
+    }
     InputDevice inputDevice = InputDevice.getDevice(keyEvent.getDeviceId());
     return inputDevice != null
         && !inputDevice.isVirtual()

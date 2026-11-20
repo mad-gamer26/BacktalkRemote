@@ -16,11 +16,12 @@ use backtalk_remote_protocol::{
 use tokio::sync::mpsc;
 
 use crate::audio_out::{self, Playback};
+use crate::gesture::Gesture;
 use crate::keys::{self, Keys, NONCE_LEN};
 use crate::link::{self, Incoming, Joined, Server, Socket, Udp};
 use crate::peer::{
-    self, GlobalAction, MAX_TYPED_CHARS, PEER_VERSION, Screen, Sequence, ToController, ToHost,
-    TouchEvent,
+    self, GlobalAction, KeyInput, MAX_TYPED_CHARS, PEER_VERSION, Screen, Sequence, ToController,
+    ToHost, TouchEvent,
 };
 use crate::seal::{self, Direction, Kind, Sealer};
 use crate::{Backoff, RELAY_SILENCE, runtime};
@@ -59,6 +60,10 @@ pub struct ControllerStatus {
     /// The phone's name, while connected.
     pub phone: Option<String>,
     pub screen: Option<Screen>,
+    /// Whether the phone takes keys from this device's keyboard
+    /// ([`ControllerSession::send_key`]): false for a phone with an older
+    /// Backtalk Remote, and while not connected.
+    pub keyboard: bool,
     pub audio: AudioState,
     /// What went wrong, in words, or `None`.
     pub detail: Option<String>,
@@ -75,6 +80,7 @@ enum Command {
     Touch(TouchEvent),
     Global(GlobalAction),
     Type(String),
+    Key(KeyInput),
     Stop,
 }
 
@@ -83,8 +89,13 @@ enum Command {
 #[derive(uniffi::Object)]
 pub struct ControllerSession {
     commands: mpsc::UnboundedSender<Command>,
+    gestures: mpsc::Sender<Gesture>,
     details: Arc<Mutex<Option<String>>>,
 }
+
+/// Gestures waiting to play; more are dropped, so that holding a key down
+/// does not leave the phone busy long after it is let go.
+const MAX_QUEUED_GESTURES: usize = 4;
 
 impl std::fmt::Debug for ControllerSession {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -111,20 +122,37 @@ impl ControllerSession {
     ) -> Arc<Self> {
         let (commands, receiver) = mpsc::unbounded_channel();
         let details = Arc::new(Mutex::new(None));
+        let screen = Arc::new(Mutex::new(None));
         let task = Task {
             listener,
             name: peer::clean_name(&name),
             details: Arc::clone(&details),
+            screen: Arc::clone(&screen),
             last_status: None,
         };
         runtime().spawn(task.run(server, access_key, receiver));
-        Arc::new(Self { commands, details })
+        let (gestures, queued) = mpsc::channel(MAX_QUEUED_GESTURES);
+        runtime().spawn(play_gestures(queued, commands.clone(), screen));
+        Arc::new(Self {
+            commands,
+            gestures,
+            details,
+        })
     }
 
     /// A change to the touch on this device. Sent in order; dropped while
     /// not connected to a phone.
     pub fn send_touch(&self, event: TouchEvent) {
         let _ = self.commands.send(Command::Touch(event));
+    }
+
+    /// Draws `gesture` on the phone's screen with touches, after any
+    /// gestures before it. For controlling without a touch screen; touches
+    /// from [`send_touch`](Self::send_touch) should not overlap it.
+    /// Returns false if too many gestures are waiting, and this one was
+    /// dropped.
+    pub fn send_gesture(&self, gesture: Gesture) -> bool {
+        self.gestures.try_send(gesture).is_ok()
     }
 
     pub fn send_global_action(&self, action: GlobalAction) {
@@ -134,6 +162,14 @@ impl ControllerSession {
     /// Types `text` into the phone's focused field, at the cursor.
     pub fn send_text(&self, text: String) {
         let _ = self.commands.send(Command::Type(text));
+    }
+
+    /// A key of this device's keyboard went down or came up. The phone
+    /// handles it as a key of a keyboard plugged into it. Sent in order with
+    /// touches; dropped while not connected, or if the phone does not take
+    /// keys (see [`ControllerStatus::keyboard`]).
+    pub fn send_key(&self, key: KeyInput) {
+        let _ = self.commands.send(Command::Key(key));
     }
 
     /// The audio stream's state, one "Label: value" per line, or `None`
@@ -169,6 +205,8 @@ struct Phone {
     session: Option<Session>,
     name: Option<String>,
     screen: Option<Screen>,
+    /// Whether its welcome said it takes keys.
+    keyboard: bool,
 }
 
 struct Audio {
@@ -184,7 +222,38 @@ struct Task {
     listener: Arc<dyn ControllerListener>,
     name: String,
     details: Arc<Mutex<Option<String>>>,
+    /// The phone's screen while connected, for the shape of gestures.
+    screen: Arc<Mutex<Option<Screen>>>,
     last_status: Option<ControllerStatus>,
+}
+
+/// Plays queued gestures one after another, as touches in real time, so
+/// the phone replays them with the timing Backtalk's gesture detection
+/// expects.
+async fn play_gestures(
+    mut gestures: mpsc::Receiver<Gesture>,
+    commands: mpsc::UnboundedSender<Command>,
+    screen: Arc<Mutex<Option<Screen>>>,
+) {
+    let epoch = Instant::now();
+    while let Some(gesture) = gestures.recv().await {
+        let steps = gesture.steps(*lock(&screen));
+        for step in steps {
+            if !step.wait.is_zero() {
+                tokio::time::sleep(step.wait).await;
+            }
+            let event = TouchEvent {
+                action: step.action,
+                changed: step.changed,
+                time_ms: epoch.elapsed().as_millis() as u64,
+                pointers: step.pointers,
+            };
+            if commands.send(Command::Touch(event)).is_err() {
+                return;
+            }
+        }
+        tokio::time::sleep(gesture.pause_after()).await;
+    }
 }
 
 /// How long without audio packets before the audio counts as waiting
@@ -211,6 +280,7 @@ impl Task {
             state,
             phone: phone.filter(|_| connected).and_then(|p| p.name.clone()),
             screen: phone.filter(|_| connected).and_then(|p| p.screen),
+            keyboard: phone.is_some_and(|p| connected && p.keyboard),
             audio: if connected {
                 audio_state
             } else {
@@ -218,6 +288,7 @@ impl Task {
             },
             detail,
         };
+        *lock(&self.screen) = status.screen;
         if self.last_status.as_ref() != Some(&status) {
             self.last_status = Some(status.clone());
             self.listener.on_status(status);
@@ -275,7 +346,7 @@ impl Task {
                     _ = tokio::time::sleep(wait) => break,
                     command = commands.recv() => match command {
                         // Touches while reconnecting go nowhere.
-                        Some(Command::Touch(_) | Command::Global(_) | Command::Type(_)) => {}
+                        Some(Command::Touch(_) | Command::Global(_) | Command::Type(_) | Command::Key(_)) => {}
                         Some(Command::Stop) | None => {
                             return self.report(ControllerState::Stopped, None, None, None);
                         }
@@ -329,6 +400,7 @@ impl Task {
                     session: None,
                     name: None,
                     screen: None,
+                    keyboard: false,
                 });
         if let Some(p) = phone.as_mut()
             && let Err(e) = Self::hello(&mut socket, &handshake, p, &self.name).await
@@ -362,7 +434,7 @@ impl Task {
                             // The phone came (back): a new connection.
                             audio = None;
                             *lock(&self.details) = None;
-                            let p = phone.insert(Phone { id: peer.peer_id, nonce: None, session: None, name: None, screen: None });
+                            let p = phone.insert(Phone { id: peer.peer_id, nonce: None, session: None, name: None, screen: None, keyboard: false });
                             if let Err(e) = Self::hello(&mut socket, &handshake, p, &self.name).await {
                                 return Ended::Lost(e);
                             }
@@ -405,6 +477,10 @@ impl Task {
                     let message = match command {
                         Some(Command::Touch(event)) => Some(Message::Touch(event)),
                         Some(Command::Global(action)) => Some(Message::Global(action)),
+                        Some(Command::Key(key)) => phone
+                            .as_ref()
+                            .filter(|p| p.keyboard)
+                            .map(|_| Message::Key(key)),
                         Some(Command::Type(text)) => {
                             let text: String = text.chars().take(MAX_TYPED_CHARS).collect();
                             (!text.is_empty()).then_some(Message::Type(text))
@@ -425,6 +501,7 @@ impl Task {
                             Message::Touch(event) => ToHost::Touch { seq, event },
                             Message::Global(action) => ToHost::Global { seq, action },
                             Message::Type(text) => ToHost::Type { seq, text },
+                            Message::Key(key) => ToHost::Key { seq, key },
                         };
                         let data = s.sealer.seal(Direction::ToHost, &serde_json::to_vec(&body).expect("serializes"));
                         if let Err(e) = link::send(&mut socket, &RelayRequest::Send { to: s.host, data }).await {
@@ -520,6 +597,7 @@ impl Task {
                     stream_nonce,
                     name,
                     screen,
+                    keyboard,
                 } = serde_json::from_slice(&plain).ok()?
                 else {
                     return None;
@@ -537,6 +615,7 @@ impl Task {
                 });
                 phone.name = Some(peer::clean_name(&name));
                 phone.screen = Some(screen);
+                phone.keyboard = keyboard;
                 Some(Opened::Welcome(stream_nonce))
             }
             Kind::Session => {
@@ -565,6 +644,7 @@ enum Message {
     Touch(TouchEvent),
     Global(GlobalAction),
     Type(String),
+    Key(KeyInput),
 }
 
 enum Opened {

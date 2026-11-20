@@ -64,6 +64,36 @@ pub enum GlobalAction {
     QuickSettings,
 }
 
+/// Whether a key went down (again, while held, with a higher `repeat`) or
+/// came up.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, uniffi::Enum)]
+#[serde(rename_all = "snake_case")]
+pub enum KeyAction {
+    Down,
+    Up,
+}
+
+/// A key on the controlling device's keyboard, as Android names it, so
+/// that the phone handles it as a key of a keyboard plugged into it.
+/// `key_code` is Android's `KeyEvent` key code, `meta_state` its `META_`
+/// bits for the modifiers held, `repeat` how many times a held key has
+/// repeated.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, uniffi::Record)]
+pub struct KeyInput {
+    pub action: KeyAction,
+    pub key_code: u32,
+    pub meta_state: u32,
+    pub repeat: u32,
+}
+
+/// The highest key code the phone takes (Android has about 320).
+pub const MAX_KEY_CODE: u32 = 1_000;
+
+/// Whether a key is one the host can rebuild.
+pub fn key_is_valid(key: &KeyInput) -> bool {
+    (1..=MAX_KEY_CODE).contains(&key.key_code)
+}
+
 /// The phone's screen, in pixels, as it is turned now.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, uniffi::Record)]
 pub struct Screen {
@@ -95,6 +125,12 @@ pub enum ToHost {
         seq: u64,
         text: String,
     },
+    /// A key pressed or let go. Only to a phone whose welcome says
+    /// `keyboard`; an older phone drops it.
+    Key {
+        seq: u64,
+        key: KeyInput,
+    },
     /// The controller is leaving on purpose.
     Bye {
         seq: u64,
@@ -113,6 +149,10 @@ pub enum ToController {
         stream_nonce: String,
         name: String,
         screen: Screen,
+        /// Whether the phone takes keys ([`ToHost::Key`]). Missing from
+        /// phones before keys.
+        #[serde(default)]
+        keyboard: bool,
     },
     /// The screen turned or changed size.
     Screen { seq: u64, screen: Screen },
@@ -127,6 +167,7 @@ impl ToHost {
             ToHost::Touch { seq, .. }
             | ToHost::Global { seq, .. }
             | ToHost::Type { seq, .. }
+            | ToHost::Key { seq, .. }
             | ToHost::Bye { seq } => Some(*seq),
         }
     }
@@ -256,6 +297,38 @@ mod tests {
         })
         .unwrap();
         assert_eq!(g, r#"{"type":"global","seq":1,"action":"quick_settings"}"#);
+    }
+
+    #[test]
+    fn keys_are_tagged_and_old_welcomes_take_no_keys() {
+        let k = ToHost::Key {
+            seq: 2,
+            key: KeyInput {
+                action: KeyAction::Down,
+                key_code: 22,
+                meta_state: 2,
+                repeat: 0,
+            },
+        };
+        let text = serde_json::to_string(&k).unwrap();
+        assert_eq!(
+            text,
+            r#"{"type":"key","seq":2,"key":{"action":"down","key_code":22,"meta_state":2,"repeat":0}}"#
+        );
+        assert_eq!(serde_json::from_str::<ToHost>(&text).unwrap(), k);
+        // A phone from before keys says nothing about them.
+        let old = r#"{"type":"welcome","version":1,"controller_nonce":"a","host_nonce":"b",
+            "stream_nonce":"c","name":"Pixel","screen":{"width":1,"height":2}}"#;
+        let ToController::Welcome { keyboard, .. } = serde_json::from_str(old).unwrap() else {
+            panic!("a welcome")
+        };
+        assert!(!keyboard);
+        assert!(!key_is_valid(&KeyInput {
+            action: KeyAction::Up,
+            key_code: 0,
+            meta_state: 0,
+            repeat: 0
+        }));
     }
 
     #[test]

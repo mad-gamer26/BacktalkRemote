@@ -1,0 +1,78 @@
+# XcodeGen spec for Backtalk Remote for Mac: control an Android phone
+# running Backtalk Remote from the Mac's keyboard, and hear its Backtalk.
+# Build the core first, then:
+#   remote/mac/build-core.sh && cd remote/mac && xcodegen generate
+#   xcodebuild -project BacktalkRemoteMac.xcodeproj -scheme BacktalkRemoteMac test
+name: BacktalkRemoteMac
+options:
+  bundleIdPrefix: com.madgamer
+  deploymentTarget:
+    macOS: "14.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  BacktalkRemoteMac:
+    type: application
+    platform: macOS
+    sources:
+      - BacktalkRemoteMac
+      - path: Generated/backtalk_remote.swift
+    info:
+      path: BacktalkRemoteMac/Info.plist
+      properties:
+        CFBundleName: Backtalk Remote
+        CFBundleDisplayName: Backtalk Remote
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        LSApplicationCategoryType: public.app-category.utilities
+        NSHumanReadableCopyright: "MIT License"
+        # Only standard, published encryption (XChaCha20-Poly1305, TLS).
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_NAME: Backtalk Remote
+        PRODUCT_BUNDLE_IDENTIFIER: com.madgamer.BacktalkRemoteMac
+        GENERATE_INFOPLIST_FILE: NO
+        # The core is Rust with a C interface; UniFFI's generated Swift.
+        SWIFT_STRICT_CONCURRENCY: minimal
+        # Signed to run locally ("-") unless built with a team:
+        #   xcodebuild ... DEVELOPMENT_TEAM=XXXXXXXXXX CODE_SIGN_IDENTITY="Apple Development"
+        # A team keeps the app the same app for the keychain across builds,
+        # so it asks once for the saved access key rather than after each build.
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        ENABLE_HARDENED_RUNTIME: YES
+        COMBINE_HIDPI_IMAGES: YES
+    dependencies:
+      - framework: Generated/BacktalkRemoteCore.xcframework
+        embed: false
+      - sdk: AudioToolbox.framework
+      - sdk: CoreAudio.framework
+      - sdk: AudioUnit.framework
+      - sdk: Security.framework
+      - sdk: SystemConfiguration.framework
+  BacktalkRemoteMacTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [BacktalkRemoteMacTests]
+    dependencies:
+      - target: BacktalkRemoteMac
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.madgamer.BacktalkRemoteMacTests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Backtalk Remote.app/Contents/MacOS/Backtalk Remote"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+schemes:
+  BacktalkRemoteMac:
+    build:
+      targets:
+        BacktalkRemoteMac: all
+        BacktalkRemoteMacTests: [test]
+    test:
+      targets: [BacktalkRemoteMacTests]

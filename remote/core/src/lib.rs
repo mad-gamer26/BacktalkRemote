@@ -5,7 +5,8 @@
 //!   the controllers' touches, which it treats as its own, and hands over
 //!   the audio it plays.
 //! * [`controller::ControllerSession`]: control a phone, and hear its
-//!   Backtalk.
+//!   Backtalk. Without a touch screen (a Mac), [`gesture`] makes Backtalk's
+//!   gestures from touches.
 //!
 //! Both meet through a relay server ([`link`]); everything between them is
 //! sealed with keys made from their shared access key ([`keys`],
@@ -14,6 +15,7 @@
 
 pub mod audio_out;
 pub mod controller;
+pub mod gesture;
 pub mod host;
 pub mod host_audio;
 pub mod keys;

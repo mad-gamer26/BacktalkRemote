@@ -13,11 +13,14 @@ use audionet_transport::crypto::PresharedKey;
 use backtalk_remote_protocol::Role;
 
 use crate::controller::{ControllerListener, ControllerSession, ControllerState, ControllerStatus};
+use crate::gesture::{Gesture, SwipeDirection};
 use crate::host::{HostListener, HostSession, HostState, HostStatus};
 use crate::host_audio::HostAudio;
 use crate::keys::{self, Keys};
 use crate::link::{self, Server, Udp};
-use crate::peer::{GlobalAction, Screen, TouchAction, TouchEvent, TouchPointer};
+use crate::peer::{
+    GlobalAction, KeyAction, KeyInput, Screen, TouchAction, TouchEvent, TouchPointer,
+};
 
 /// Starts a relay on this machine; returns its server setting.
 fn relay() -> (String, tokio::runtime::Runtime) {
@@ -48,6 +51,7 @@ enum HostEvent {
     Touch(TouchEvent),
     Global(GlobalAction),
     Text(String),
+    Key(KeyInput),
     Audio(bool),
 }
 
@@ -65,6 +69,9 @@ impl HostListener for HostProbe {
     }
     fn on_type_text(&self, text: String) {
         let _ = self.0.lock().unwrap().send(HostEvent::Text(text));
+    }
+    fn on_key(&self, _controller: u32, key: KeyInput) {
+        let _ = self.0.lock().unwrap().send(HostEvent::Key(key));
     }
     fn on_audio_wanted(&self, wanted: bool) {
         let _ = self.0.lock().unwrap().send(HostEvent::Audio(wanted));
@@ -129,6 +136,7 @@ fn a_controller_controls_the_phone_with_the_same_key() {
     });
     assert_eq!(status.phone.as_deref(), Some("Test Pixel"));
     assert_eq!(status.screen, Some(SCREEN));
+    assert!(status.keyboard);
     // Backtalk is asked for its audio before the status says controlled.
     wait_for(&hrx, "audio wanted", |e| {
         matches!(e, HostEvent::Audio(true))
@@ -176,6 +184,52 @@ fn a_controller_controls_the_phone_with_the_same_key() {
     }
     // In the order sent.
     assert_eq!(got, vec!["Down 1234", "Up 1300", "Home", "héllo"]);
+
+    // Keys arrive as they were pressed.
+    let alt_right = KeyInput {
+        action: KeyAction::Down,
+        key_code: 22,
+        meta_state: 0x12,
+        repeat: 0,
+    };
+    controller.send_key(alt_right);
+    controller.send_key(KeyInput {
+        action: KeyAction::Up,
+        ..alt_right
+    });
+    let mut keys = Vec::new();
+    while keys.len() < 2 {
+        if let HostEvent::Key(k) = hrx.recv_timeout(Duration::from_secs(10)).expect("the keys") {
+            keys.push(k);
+        }
+    }
+    assert_eq!(keys[0], alt_right);
+    assert_eq!(keys[1].action, KeyAction::Up);
+
+    // A gesture from a keyboard arrives as the touches of a finger drawing
+    // it, in real time.
+    assert!(controller.send_gesture(Gesture::Swipe {
+        fingers: 1,
+        directions: vec![SwipeDirection::Right],
+    }));
+    let mut touches = Vec::new();
+    loop {
+        if let HostEvent::Touch(e) = hrx
+            .recv_timeout(Duration::from_secs(10))
+            .expect("the gesture's touches")
+        {
+            let up = e.action == TouchAction::Up;
+            touches.push(e);
+            if up {
+                break;
+            }
+        }
+    }
+    assert_eq!(touches.first().unwrap().action, TouchAction::Down);
+    assert!(touches.len() > 5);
+    let took = touches.last().unwrap().time_ms - touches[0].time_ms;
+    assert!((100..400).contains(&took), "took {took} ms");
+    assert!(touches.last().unwrap().pointers[0].x > touches[0].pointers[0].x + 0.3);
 
     controller.stop();
     wait_for(&crx, "the controller stopped", |s| {

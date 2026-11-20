@@ -34,6 +34,7 @@ import uniffi.backtalk_remote.HostListener
 import uniffi.backtalk_remote.HostSession
 import uniffi.backtalk_remote.HostState
 import uniffi.backtalk_remote.HostStatus
+import uniffi.backtalk_remote.KeyInput
 import uniffi.backtalk_remote.Screen
 import uniffi.backtalk_remote.TouchEvent
 
@@ -63,6 +64,7 @@ class RemoteHost(
 
   private val handler = Handler(Looper.getMainLooper())
   private val touch = RemoteTouchController(service, interpreter, feedback)
+  private val keyboard = RemoteKeyboard(service, feedback)
   private val input =
     RemoteTouchInput(::screenSize, touch::onMotionEvent, cancelled = touch::cancel)
   private val feeder = RemoteAudioFeeder(service) { rate, pcm -> session.pushAudio(rate.toUInt(), pcm) }
@@ -78,6 +80,7 @@ class RemoteHost(
     feeder.stop()
     input.stop()
     touch.stop()
+    keyboard.releaseAll()
     releaseWakeLock()
   }
 
@@ -124,6 +127,10 @@ class RemoteHost(
     }
   }
 
+  override fun onKey(controller: UInt, key: KeyInput) {
+    handler.post { if (!stopped) keyboard.onKey(key) }
+  }
+
   override fun onAudioWanted(wanted: Boolean) {
     handler.post {
       if (wanted && !stopped) {
@@ -132,6 +139,8 @@ class RemoteHost(
       } else {
         feeder.stop()
         input.stop()
+        // No device controls the phone now: no key of theirs stays down.
+        keyboard.releaseAll()
         releaseWakeLock()
       }
     }

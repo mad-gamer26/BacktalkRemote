@@ -1,6 +1,6 @@
 # Remote access
 
-Backtalk Remote lets another device control an Android phone running Backtalk Remote, and hear the phone's Backtalk. The controlling device can be an iPhone, with the Backtalk Remote app, or another Android phone running Backtalk Remote. Its touch screen becomes the phone's: touches go to the phone as they happen, and the phone's Backtalk handles them exactly as it handles its own touch screen, with the same gestures, the same timing and the same settings. What the phone's Backtalk says and plays comes back to the controlling device.
+Backtalk Remote lets another device control an Android phone running Backtalk Remote, and hear the phone's Backtalk. The controlling device can be an iPhone, with the Backtalk Remote app, a Mac, with Backtalk Remote for Mac and its keyboard, or another Android phone running Backtalk Remote. Its touch screen becomes the phone's: touches go to the phone as they happen, and the phone's Backtalk handles them exactly as it handles its own touch screen, with the same gestures, the same timing and the same settings. What the phone's Backtalk says and plays comes back to the controlling device.
 
 The two devices meet through a relay server. The official one is `mad-gamer.com`, which the apps fill in; you can run your own.
 
@@ -27,6 +27,38 @@ Once connected, VoiceOver says "Controlling Pixel 8. The lower part of the scree
 **Type text** sends text to the text field that has focus on the phone, at its cursor. That is quicker than the phone's on-screen keyboard. In a password field, the text goes through the phone's clipboard.
 
 The iPhone stays awake while it controls the phone, and the phone's audio keeps playing if you switch to another app.
+
+## Controlling from a Mac
+
+Backtalk Remote for Mac passes the Mac's keyboard to the phone, as NVRC passes it to a remote computer: every key goes to the phone as a key of a keyboard plugged into it, so you don't need another phone in your hand. It plays the phone's Backtalk through the Mac's speakers or headphones.
+
+1.  Open Backtalk Remote on the Mac.
+2.  Enter the phone's access key. Capital letters count. The relay server is `mad-gamer.com` unless you run your own.
+3.  Choose **Connect** (Command-Return).
+
+Once connected, the keyboard passes to the phone by itself, and the Mac says "Controlling Pixel 8. Control-Command-Escape returns the keyboard to the Mac." From then on **every key** goes to the phone, Mac shortcuts (Command-Tab, Command-Space, Command-Q) and the Mac VoiceOver's keys included, until **Control-Command-Escape** gives the keyboard back to the Mac ("Keyboard returned to the Mac"). **Pass Keyboard to Phone** (Command-G) in the Connection menu passes it again. Keys pass only while Backtalk Remote is the active app, and the keyboard returns to the Mac by itself when the phone goes away.
+
+Passing the keyboard needs Backtalk Remote turned on in System Settings, Privacy and Security, Accessibility; the first time, the Mac asks, and Command-G passes the keyboard once it is on.
+
+On the phone's side: Command is Android's Meta key, Option is Alt, and Control and Shift are themselves. Caps Lock is a key of its own while the keyboard is passed (as in NVRC, the Mac's Caps Lock becomes F19 for that time, which the phone gets as Caps Lock, and is restored after, even after a crash). Backtalk's keyboard shortcuts work (Alt with the arrows moves to the next and previous item, in the default keymap), and so do Android's (Meta-N for notifications, Meta-Enter for home), and the app's. The phone handles each key as a key of a plugged-in keyboard, as far as Android lets it:
+
+*   Backtalk gets every key first, as it gets a physical keyboard's, and its shortcuts take the keys they use.
+*   From Android 13, while a text field has focus, the other keys go to the field as real key events, through Backtalk's accessibility input method: typing, Delete, the arrows, selecting with Shift, and the app's shortcuts such as Control-C.
+*   Elsewhere, and in text fields before Android 13, Android lets no service give keys to apps, so the phone does what the key does: the arrows and Tab move focus (Backtalk's focus follows, as it follows a keyboard's), Enter and Space click, Escape goes back, Page Up and Page Down scroll, Home and End go to the top and bottom, Android's Meta shortcuts work, and in a text field, characters are typed and the editing keys edit.
+
+Keys go by where they are on the keyboard, and the phone's keyboard layout (that of a virtual keyboard, US English) turns them into characters.
+
+With the keyboard back on the Mac, the window has:
+
+*   **Type on the phone** (Command-T): what you type there goes into the phone's focused text field, at its cursor, when you press Return. Good for other layouts and for a lot of text.
+*   Android's **Back**, **Home**, **Recent apps**, **Notifications** and **Quick settings**.
+*   The phone's screen, for the mouse: a click is a touch, and a drag moves a finger.
+*   The **Phone** menu, which draws Backtalk's gestures on the phone's screen (swipes, taps, multi-finger and angle gestures), as the touches of a finger, so the phone's Backtalk handles them as gestures on its screen. **Speak Gestures** has VoiceOver say each as it goes.
+*   **Disconnect** (Shift-Command-D) and **Audio Details** (Command-I).
+
+Keys need Backtalk Remote on the phone from this version on. With an older one, the Mac says so on connecting, and only gestures and the buttons work.
+
+The Mac stays awake (its display can still sleep) while it controls the phone. Backtalk Remote for Mac needs macOS 14 or later.
 
 ## Controlling from another Android phone
 
@@ -107,6 +139,16 @@ xcodebuild -project BacktalkRemote.xcodeproj -scheme BacktalkRemote \
 
 To run on an iPhone, add `DEVELOPMENT_TEAM=<your team> -allowProvisioningUpdates`.
 
+The Mac app is in `remote/mac`. On a Mac with Xcode, Rust with the targets `aarch64-apple-darwin` and `x86_64-apple-darwin`, and XcodeGen:
+
+```sh
+remote/mac/build-core.sh
+cd remote/mac && xcodegen generate
+xcodebuild -project BacktalkRemoteMac.xcodeproj -scheme BacktalkRemoteMac test
+```
+
+Without a team, the app is signed only to run on this Mac, and macOS asks again for the saved access key after each new build. To sign it with your team, add `DEVELOPMENT_TEAM=<your team> CODE_SIGN_IDENTITY="Apple Development" CODE_SIGN_STYLE=Automatic -allowProvisioningUpdates`.
+
 ## Releases
 
 Backtalk Remote is published on GitHub. Each push to `master` updates the `dev` pre-release; a tag such as `v1.0.1` updates the `stable` release. Builds from either follow their own release for updates (`-PupdateChannel=stable` for release builds; `dev` is the default). Both are signed with Backtalk Remote's release key, which the repository holds as the secrets `BACKTALK_REMOTE_KEYSTORE_BASE64`, `BACKTALK_REMOTE_KEYSTORE_PASSWORD`, `BACKTALK_REMOTE_KEY_ALIAS` and `BACKTALK_REMOTE_KEY_PASSWORD`. Android only installs an update signed with the same key, so the key must never change or be lost. Without it (a fork, a pull request), builds are signed with a debug key.
@@ -120,8 +162,8 @@ git push origin v1.0.1
 
 To sign a build on your own computer, add `keystore.file`, `keystore.password`, `key.alias` and `key.password` to `local.properties`.
 
-The iPhone app is not published yet; build it as above.
+The iPhone and Mac apps are not published yet; build them as above.
 
 ## Testing
 
-`cargo test` in `remote/` tests the protocol, the relay, keys and sealing, the reclock, and a phone and a controlling device through a relay on the same computer, audio included. `remote-probe` (`cargo run --release --bin remote-probe -- --server mad-gamer.com --key KEY`) is a controlling device without a screen for testing: it sends scripted gestures to a phone and records its audio.
+`cargo test` in `remote/` tests the protocol, the relay, keys and sealing, the reclock, and a phone and a controlling device through a relay on the same computer, audio included. The Mac app passes keys with an event tap (`KeyboardPassthrough.swift`, NVRC's) to the core's `send_key`, which the phone handles in `RemoteKeyboard`, and draws gestures with `send_gesture` (`remote/core/src/gesture.rs`), which plays them as touches in real time, one gesture after another. `remote-probe` (`cargo run --release --bin remote-probe -- --server mad-gamer.com --key KEY`) is a controlling device without a screen for testing: it sends scripted gestures to a phone and records its audio.

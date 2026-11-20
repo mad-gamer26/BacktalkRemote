@@ -28,3 +28,6 @@ utils/build/
 remote/target/
 remote/ios/Generated/
 remote/ios/BacktalkRemote.xcodeproj/
+remote/mac/Generated/
+remote/mac/BacktalkRemoteMac.xcodeproj/
+remote/mac/build/
