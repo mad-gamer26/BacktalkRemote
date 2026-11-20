@@ -156,6 +156,7 @@ import com.google.android.accessibility.talkback.braille.TalkBackForBrailleImeIm
 import com.google.android.accessibility.talkback.braille.TalkBackForBrailleImeImpl.TalkBackPrivateMethodProvider;
 import com.google.android.accessibility.talkback.compositor.Compositor;
 import com.google.android.accessibility.talkback.compositor.CompositorUtils;
+import com.google.android.accessibility.talkback.compositor.EarlyClickState;
 import com.google.android.accessibility.talkback.compositor.EarlyFocusSpeech;
 import com.google.android.accessibility.talkback.compositor.EventFilter;
 import com.google.android.accessibility.talkback.compositor.GlobalVariables;
@@ -189,6 +190,7 @@ import com.google.android.accessibility.talkback.focusmanagement.interpreter.Scr
 import com.google.android.accessibility.talkback.focusmanagement.interpreter.TouchExplorationInterpreter;
 import com.google.android.accessibility.talkback.focusmanagement.record.AccessibilityFocusActionHistory;
 import com.google.android.accessibility.talkback.focusmanagement.record.FocusActionInfo;
+import com.google.android.accessibility.talkback.gesture.EarlySwipePolicy;
 import com.google.android.accessibility.talkback.gesture.GestureController;
 import com.google.android.accessibility.talkback.gesture.GestureHistory;
 import com.google.android.accessibility.talkback.gesture.GestureShortcutMapping;
@@ -1116,13 +1118,6 @@ public class TalkBackService extends AccessibilityServiceCompat
     }
   }
 
-  /** Says why the model on the phone could not answer, such as low memory. */
-  private void speakOnDeviceAiProblem(String text) {
-    if (pipeline != null) {
-      pipeline.getFeedbackReturner().returnFeedback(EVENT_ID_UNTRACKED, Feedback.speech(text));
-    }
-  }
-
   private void updateSpeechOverlayOnConfigChange(Configuration newConfig) {
     if (lastConfiguration == null
         || didScreenPropertiesChange(lastConfiguration, newConfig)
@@ -1635,6 +1630,81 @@ public class TalkBackService extends AccessibilityServiceCompat
       return onGesture(gestureEvent.toAccessibilityGestureEvent());
     }
     return handleOnGestureById(gestureEvent.getDisplayId(), gestureEvent.getGestureId());
+  }
+
+  // Where accessibility focus was before the swipe that was performed before its finger lifted.
+  private @Nullable AccessibilityNodeInfoCompat earlySwipePivot;
+  private @Nullable DirectionNavigationActor earlySwipeNavigation;
+  private boolean earlySwipeHandled;
+
+  /**
+   * Whether a swipe that has just started can be performed before its finger lifts: only one that
+   * moves to the next or previous item, whose effect can be undone if the finger goes on to draw
+   * another gesture.
+   */
+  boolean canStartSwipeEarly(int gestureId) {
+    return isServiceActive()
+        && !PauseController.isPaused()
+        && getBooleanPref(
+            R.string.pref_swipe_before_lift_key, R.bool.pref_swipe_before_lift_default)
+        && (menuManager == null || !menuManager.isMenuShowing())
+        && EarlySwipePolicy.onlyMovesToAdjacentItem(
+            this,
+            gestureId,
+            gestureController,
+            gestureShortcutMapping,
+            pipeline.getActorState().getDirectionNavigation().getCurrentGranularity());
+  }
+
+  void startSwipeEarly(int gestureId, int displayId) {
+    earlySwipePivot =
+        accessibilityFocusMonitor.getAccessibilityFocus(/* useInputFocusIfEmpty= */ false);
+    earlySwipeHandled = handleOnGestureById(displayId, gestureId);
+  }
+
+  /** Called when the finger lifts and the swipe performed early turns out to be the gesture. */
+  void finishSwipeEarly(GestureEvent gestureEvent) {
+    earlySwipePivot = null;
+    // Before Android 13, only remote access detects gestures, and they are not saved.
+    if (earlySwipeHandled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      pipeline
+          .getFeedbackReturner()
+          .returnFeedback(
+              EVENT_ID_UNTRACKED, Feedback.saveGesture(gestureEvent.toAccessibilityGestureEvent()));
+    }
+  }
+
+  void undoSwipeEarly() {
+    interruptAllFeedback(/* stopTtsSpeechCompletely= */ false);
+    AccessibilityNodeInfoCompat movedTo =
+        accessibilityFocusMonitor.getAccessibilityFocus(/* useInputFocusIfEmpty= */ false);
+    if (earlySwipeNavigation != null) {
+      // A scroll the swipe started must not move focus on when it ends.
+      earlySwipeNavigation.cancelAutoScrollFocus();
+    }
+    if (earlySwipePivot == null) {
+      // Nothing had focus before the swipe.
+      pipeline
+          .getFeedbackReturner()
+          .returnFeedback(EVENT_ID_UNTRACKED, Feedback.focus(Feedback.Focus.Action.CLEAR));
+    } else if (earlySwipePivot.refresh()) {
+      pipeline
+          .getFeedbackReturner()
+          .returnFeedback(
+              EVENT_ID_UNTRACKED,
+              Feedback.focus(
+                  earlySwipePivot,
+                  new FocusActionInfo.Builder()
+                      .setSourceAction(FocusActionInfo.FOCUS_SYNCHRONIZATION)
+                      .setForceMuteFeedback(true)
+                      .build()));
+    }
+    // A swipe and hold is performed straight after this, before the app's focus event updates
+    // Android's copy of where focus is, and would otherwise move on from the item undone.
+    if (movedTo != null && BuildVersionUtils.isAtLeastT()) {
+      clearCachedSubtree(movedTo.unwrap());
+    }
+    earlySwipePivot = null;
   }
 
   private void provisionTouchExplore(boolean enabled) {
@@ -2234,6 +2304,7 @@ public class TalkBackService extends AccessibilityServiceCompat
             globalVariables,
             processorPhoneticLetters,
             getCompositorFlavor());
+    accessibilityEventProcessor.setCompositor(compositor);
     // TODO: Make pipeline run Compositor, which returns speech feedback, no callback.
 
     analytics =
@@ -2330,6 +2401,7 @@ public class TalkBackService extends AccessibilityServiceCompat
             universalSearchActor.state,
             compositor.getTextComposer());
     directionNavigationActorStateReader = directionNavigationActor.state;
+    earlySwipeNavigation = directionNavigationActor;
     userInterface.registerListener(directionNavigationActor);
     TextEditActor editor =
         new TextEditActor(
@@ -2377,6 +2449,8 @@ public class TalkBackService extends AccessibilityServiceCompat
 
     voiceCommandProcessor =
         new VoiceCommandProcessor(this, accessibilityFocusMonitor, selectorController, analytics);
+    voiceCommandProcessor.setBatteryMonitor(batteryMonitor);
+    voiceCommandProcessor.setStatusReader(statusReader);
     voiceCommandActor =
         new VoiceCommandActor(
             this,
@@ -2403,7 +2477,7 @@ public class TalkBackService extends AccessibilityServiceCompat
                 : new GeminiRestEndpoint(
                     this,
                     BuildConfig.GEMINI_API_KEY,
-                    new LocalGemmaRequestPerformer(this, this::speakOnDeviceAiProblem)),
+                    new LocalGemmaRequestPerformer(this)),
             new AiCoreEndpoint(this));
 
     KeyboardActor keyboardActor = new KeyboardActor(this);
@@ -2473,7 +2547,7 @@ public class TalkBackService extends AccessibilityServiceCompat
                 directionNavigationActor,
                 editor,
                 labelManager,
-                new NodeActionPerformer(),
+                new NodeActionPerformer(new EarlyClickState(compositor::sayClickStateEarly)),
                 systemActionPerformer,
                 languageActor,
                 passThroughModeActor,

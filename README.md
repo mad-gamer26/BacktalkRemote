@@ -16,6 +16,14 @@ Backtalk is a fork of [Google's TalkBack](https://github.com/google/talkback), t
 *   Move the code to Kotlin over time. New code is written in Kotlin. Google's Java files are converted only when they already need large changes, so that new Google releases stay easy to merge.
 *   Stay close to Google's releases, and merge each new one.
 
+## Why Backtalk
+
+Backtalk is for people who want TalkBack, but faster. If you know TalkBack, you already know Backtalk: gestures, menus and settings work as they do in TalkBack, apart from a few changed defaults listed in [Differences from TalkBack](differences.md), and anything that teaches TalkBack still applies.
+
+When your screen reader breaks, you can't use your phone, so Backtalk changes carefully. Every pull request is read and reviewed by hand and has to be tested on a device, and new behaviour is off by default, so an update doesn't change how your phone works unless you choose it. Backtalk also stays close to Google's code, so that each new TalkBack release can be merged and Backtalk keeps up with new versions of Android.
+
+If you'd like a screen reader that adds many more features, [SandFly](https://github.com/aaron-gh/sandfly) is a fork of Backtalk that does.
+
 ## Differences from TalkBack
 
 Backtalk speaks sooner after each swipe and screen change, and can play its sounds and speech through a low-latency audio path. It adds a two-finger rotor, a circle menu, Pause Backtalk, direct touch for audio games, sound themes with control sounds in 3D, a vibration for every sound, a status gesture, and braille keyboard dots that follow how you hold the device. It also changes some defaults and fixes problems in TalkBack. For the full list, see [Differences from TalkBack](differences.md).
@@ -25,6 +33,8 @@ Backtalk speaks sooner after each swipe and screen change, and can play its soun
 The emoji names are from the [Unicode CLDR](https://cldr.unicode.org/) and the Unicode emoji data, copyright Unicode, Inc., used under the Unicode License v3, which is in `utils/src/main/assets/emoji_names/LICENSE`.
 
 Scripts run in [QuickJS-NG](https://github.com/quickjs-ng/quickjs), copyright Fabrice Bellard, Charlie Gordon, Ben Noordhuis and Saúl Ibarra Corretgé, used under the MIT License, which is in `scripting/quickjs/src/main/assets/quickjs/LICENSE`. The build downloads its source, pinned by version and checksum in `scripting/quickjs/src/main/cpp/CMakeLists.txt`.
+
+3D audio uses the MIT Media Lab KEMAR measurements, by Bill Gardner and Keith Martin, packed into `utils/src/main/res/raw/hrtf_kemar.bin`.
 
 ## Contributing
 
@@ -69,13 +79,13 @@ Images and screenshots that you describe are sent to Google. On the free tier, G
 If you do not want to use an API key, or you have hit the free tier limit, Backtalk can describe images and screens with a Gemma 4 model that runs on your phone. Nothing is sent to Google or anyone else when you use it.
 
 1.  Open Backtalk settings, then **Automatic descriptions**, then **On-device AI**.
-2.  Choose a model. **Gemma 4 E2B** is the one to start with: 2.6 GB, and it needs a phone with about 6 GB of memory. **Gemma 4 E4B** is 3.7 GB, gives better answers, and needs about 8 GB. The list also has other small vision models from the [LiteRT community](https://huggingface.co/litert-community), from 0.4 GB up, so that you can try them. Those are marked experimental: they are community conversions that the Backtalk developers have not tried, and some may not work or may follow the screen description format badly. The list only shows models that your phone has enough memory for, plus any you already have. If your phone does not have enough memory for Gemma 4 E2B, Backtalk picks the largest model that fits.
-3.  Choose **Download model**. It downloads once from [Hugging Face](https://huggingface.co/litert-community) and carries on where it stopped if the connection drops. A notification shows the progress. Backtalk checks the file against a known SHA-256 hash and deletes it if it does not match. Or choose **Use a model file from storage** to use a `.litertlm` file that you downloaded yourself, such as `gemma-4-E2B-it.litertlm` from `litert-community/gemma-4-E2B-it-litert-lm`. Backtalk works out which model it is.
+2.  Choose a model. **Gemma 4 E2B** gives the best answers for its size: 2.6 GB, and it needs a phone with about 6 GB of memory, though on a phone with 8 GB it's slow, since it takes about 3 GB while it answers and those phones usually have less free. **Gemma 4 E4B** is 3.7 GB, gives better answers, and needs about 8 GB. The list also has other small vision models from the [LiteRT community](https://huggingface.co/litert-community), from 0.4 GB up, so that you can try them. Those are marked experimental: they are community conversions that the Backtalk developers have not tried, and some may not work or may follow the screen description format badly. The list only shows models that your phone has enough memory for, plus any you already have. Until you choose a model, Backtalk picks one that loads with the memory a phone usually has free: Gemma 4 E2B on phones with 12 GB or more, and otherwise the largest model no bigger than a fifth of the phone's memory, such as SmolVLM2 2.2B on a phone with 8 GB.
+3.  Choose **Download model**. It downloads once from [Hugging Face](https://huggingface.co/litert-community) and carries on where it stopped if the connection drops. A notification shows the progress. Backtalk downloads the file from a fixed version of the model on Hugging Face, so that a newer upload doesn't break it, checks it against a known SHA-256 hash, and deletes it if it does not match. Or choose **Use a model file from storage** to use a `.litertlm` file that you downloaded yourself, such as `gemma-4-E2B-it.litertlm` from `litert-community/gemma-4-E2B-it-litert-lm`. Backtalk works out which model it is.
 4.  Turn on **Use on-device AI**.
 
 You still need to turn on Gemini support in the Gemini settings, which switches on Describe image and Describe screen. After that, they use the model on your phone. Turn **Use on-device AI** off to go back to the Gemini API.
 
-Answers take several seconds and use battery, more than the cloud on a mid-range phone. The model loads on the first request and unloads after two idle minutes to free memory. The model runs in its own process, so if the phone runs out of memory, Android stops the model and not Backtalk, and Backtalk says so. Before it loads a model, Backtalk checks that the phone has at least as much free memory as the model's size, and if not, it says there is not enough free memory and does not load it. To test with a model that is too big for your phone, turn on **Ignore on-device AI memory limits** in **Advanced settings** > **Developer settings**. It lists every model, lets you choose any downloaded one, and skips the free memory check. If answers fail or the phone slows down, try the other model, or turn **Use the GPU** on or off. On-device AI needs a 64-bit ARM phone and adds about 22 MB to the app.
+Answers take several seconds and use battery, more than the cloud on a mid-range phone. The model loads on the first request and unloads after two idle minutes to free memory. The model runs in its own process, so if the phone runs out of memory, Android stops the model and not Backtalk, and Backtalk says so. Before it loads a model, Backtalk checks that the phone has at least as much free memory as the model's size, and if not, it does not load it, and says there is not enough free memory, as part of the image or screen description it gives instead. To test with a model that is too big for your phone, turn on **Ignore on-device AI memory limits** in **Advanced settings** > **Developer settings**. It lists every model, lets you choose any downloaded one, and skips the free memory check. If answers fail or the phone slows down, try the other model, or turn **Use the GPU** on or off. On-device AI needs a 64-bit ARM phone and adds about 22 MB to the app.
 
 ## Install
 
@@ -110,6 +120,8 @@ Android only installs an update that is signed with the same key as the installe
 ## Run
 
 After you install Backtalk, go to **Settings > Accessibility**. Backtalk is listed as **Backtalk** and is off by default. Turn off Google's TalkBack first, then turn on Backtalk.
+
+On Android 13 and later, Android may refuse to turn it on and say that this is a restricted setting, because the APK didn't come from an app store. To allow it, try to turn on Backtalk once, then go to **Settings > Apps > Backtalk**, open **More options**, and choose **Allow restricted settings**. Then turn on Backtalk again. The names of these items can differ between phones.
 
 ## Android TV
 
