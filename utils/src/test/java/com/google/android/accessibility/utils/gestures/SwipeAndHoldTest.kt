@@ -16,7 +16,6 @@
 
 package com.google.android.accessibility.utils.gestures
 
-import android.accessibilityservice.AccessibilityGestureEvent
 import android.accessibilityservice.AccessibilityService.GESTURE_SWIPE_RIGHT
 import android.accessibilityservice.AccessibilityService.GESTURE_SWIPE_RIGHT_AND_LEFT
 import android.content.Context
@@ -53,7 +52,7 @@ class SwipeAndHoldTest {
       object : GestureManifold.Listener {
         override fun onGestureStarted(gestureId: Int) {}
 
-        override fun onGestureCompleted(gestureEvent: AccessibilityGestureEvent) {
+        override fun onGestureCompleted(gestureEvent: GestureEvent) {
           completed += gestureEvent.gestureId
         }
 
